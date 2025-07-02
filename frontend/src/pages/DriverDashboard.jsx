@@ -7,6 +7,7 @@ import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet'
 import L from 'leaflet';
 import { useAuth } from '../context/AuthContext';
 import DriverHeader from '../components/DriverHeader';
+import DriverTripHistoryList from '../components/DriverTripHistoryList';
 
 const driverIcon = new L.Icon({
     iconUrl: 'https://img.icons8.com/ios-filled/50/000000/car.png',
@@ -293,7 +294,10 @@ const DriverDashboard = () => {
                             <div className="text-center text-gray-500 dark:text-gray-400 text-lg py-10">No active trip at the moment.</div>
                         )}
                         {selectedSection === 'history' && (
-                            <section>{/* ...trip history details... */}</section>
+                            <section>
+                                <h2 className="text-2xl font-bold mb-6">Trip History</h2>
+                                <DriverTripHistoryList trips={pastTrips} />
+                            </section>
                         )}
                         {selectedSection === 'profile' && (
                             <section>{/* ...profile details... */}</section>

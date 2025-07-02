@@ -17,7 +17,9 @@ const Login = () => {
 
   useEffect(() => {
     if (user) {
-      if (user.roles?.includes('DRIVER')) {
+      if (user.roles?.includes('ADMIN')) {
+        navigate('/admin/dashboard');
+      } else if (user.roles?.includes('DRIVER')) {
         navigate('/driver/dashboard');
       } else if (user.roles?.includes('USER')) {
         navigate('/user/dashboard');

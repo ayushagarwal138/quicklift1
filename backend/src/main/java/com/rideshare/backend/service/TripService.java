@@ -236,4 +236,8 @@ public class TripService {
         trip.setPaid(true);
         return tripRepository.save(trip);
     }
+
+    public Trip save(Trip trip) {
+        return tripRepository.save(trip);
+    }
 } 
