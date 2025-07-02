@@ -1,10 +1,55 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Car, MapPin, Clock, Star, Shield, Zap, LogIn, UserPlus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { driverAPI } from '../api/driver';
+import { tripsAPI } from '../api/trips';
 
 const Home = () => {
   const { user } = useAuth();
+  const [onlineDrivers, setOnlineDrivers] = useState([]);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [selectedDriver, setSelectedDriver] = useState(null);
+  const [tripForm, setTripForm] = useState({ pickupLocation: '', destination: '', vehicleType: 'SEDAN', notes: '' });
+  const [requesting, setRequesting] = useState(false);
+  const [requestSuccess, setRequestSuccess] = useState(false);
+
+  useEffect(() => {
+    const fetchOnlineDrivers = async () => {
+      try {
+        const drivers = await driverAPI.getOnlineDrivers();
+        setOnlineDrivers(drivers);
+      } catch (err) {
+        // handle error
+      }
+    };
+    fetchOnlineDrivers();
+  }, []);
+
+  const handleRequestRide = (driver) => {
+    setSelectedDriver(driver);
+    setShowRequestModal(true);
+  };
+
+  const handleTripFormChange = (e) => {
+    setTripForm({ ...tripForm, [e.target.name]: e.target.value });
+  };
+
+  const handleSendRequest = async () => {
+    setRequesting(true);
+    try {
+      await tripsAPI.requestToDriver({ ...tripForm, vehicleType: tripForm.vehicleType }, selectedDriver.id);
+      setRequestSuccess(true);
+      setTimeout(() => {
+        setShowRequestModal(false);
+        setRequestSuccess(false);
+        setTripForm({ pickupLocation: '', destination: '', vehicleType: 'SEDAN', notes: '' });
+      }, 2000);
+    } catch (err) {
+      // handle error
+    }
+    setRequesting(false);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -156,6 +201,73 @@ const Home = () => {
           )}
         </div>
       </div>
+
+      {showRequestModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-md relative">
+            <button className="absolute top-2 right-2 text-gray-400 hover:text-gray-600" onClick={() => setShowRequestModal(false)}>&times;</button>
+            <h2 className="text-xl font-bold mb-4">Request Ride from {selectedDriver?.user.username}</h2>
+            {requestSuccess ? (
+              <div className="text-green-600 font-semibold text-center py-8">Ride request sent successfully!</div>
+            ) : (
+              <form className="space-y-4" onSubmit={e => { e.preventDefault(); handleSendRequest(); }}>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Pickup Location</label>
+                  <input
+                    type="text"
+                    name="pickupLocation"
+                    value={tripForm.pickupLocation}
+                    onChange={handleTripFormChange}
+                    required
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Destination</label>
+                  <input
+                    type="text"
+                    name="destination"
+                    value={tripForm.destination}
+                    onChange={handleTripFormChange}
+                    required
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Vehicle Type</label>
+                  <select
+                    name="vehicleType"
+                    value={tripForm.vehicleType}
+                    onChange={handleTripFormChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="SEDAN">Sedan</option>
+                    <option value="SUV">SUV</option>
+                    <option value="MOTORCYCLE">Motorcycle</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">Notes (optional)</label>
+                  <input
+                    type="text"
+                    name="notes"
+                    value={tripForm.notes}
+                    onChange={handleTripFormChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={requesting}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg font-semibold transition-colors duration-200"
+                >
+                  {requesting ? 'Requesting...' : 'Send Request'}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

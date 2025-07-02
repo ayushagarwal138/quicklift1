@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Car, Eye, EyeOff } from 'lucide-react';
+import { authAPI } from '../api/auth';
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -11,15 +12,35 @@ const Register = () => {
     confirmPassword: '',
     firstName: '',
     lastName: '',
-    phoneNumber: ''
+    phoneNumber: '',
+    role: 'USER',
+    licenseNumber: '',
+    vehicleType: '',
+    vehicleModel: '',
+    vehicleColor: '',
+    licensePlate: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [usernameAvailable, setUsernameAvailable] = useState(true);
+  const [emailAvailable, setEmailAvailable] = useState(true);
+  const [checkingUsername, setCheckingUsername] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
   
-  const { register } = useAuth();
+  const { register, user } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      if (user.roles?.includes('DRIVER')) {
+        navigate('/driver/dashboard');
+      } else if (user.roles?.includes('USER')) {
+        navigate('/user/dashboard');
+      }
+    }
+  }, [user, navigate]);
 
   const handleChange = (e) => {
     setFormData({
@@ -30,6 +51,7 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('Register form submitted', formData);
     setError('');
 
     if (formData.password !== formData.confirmPassword) {
@@ -50,18 +72,51 @@ const Register = () => {
       password: formData.password,
       firstName: formData.firstName,
       lastName: formData.lastName,
-      phoneNumber: formData.phoneNumber
+      phoneNumber: formData.phoneNumber,
+      role: formData.role
     };
+
+    if (formData.role === 'DRIVER') {
+      userData.licenseNumber = formData.licenseNumber;
+      userData.vehicleType = formData.vehicleType;
+      userData.vehicleModel = formData.vehicleModel;
+      userData.vehicleColor = formData.vehicleColor;
+      userData.licensePlate = formData.licensePlate;
+    }
 
     const result = await register(userData);
     
-    if (result.success) {
-      navigate('/');
-    } else {
+    if (!result.success) {
       setError(result.error);
     }
     
     setLoading(false);
+  };
+
+  // Username uniqueness check
+  const handleUsernameBlur = async () => {
+    if (!formData.username) return;
+    setCheckingUsername(true);
+    try {
+      const available = await authAPI.checkUsername(formData.username);
+      setUsernameAvailable(available);
+    } catch {
+      setUsernameAvailable(true); // fallback to allow
+    }
+    setCheckingUsername(false);
+  };
+
+  // Email uniqueness check
+  const handleEmailBlur = async () => {
+    if (!formData.email) return;
+    setCheckingEmail(true);
+    try {
+      const available = await authAPI.checkEmail(formData.email);
+      setEmailAvailable(available);
+    } catch {
+      setEmailAvailable(true);
+    }
+    setCheckingEmail(false);
   };
 
   return (
@@ -131,9 +186,16 @@ const Register = () => {
                 required
                 value={formData.username}
                 onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                onBlur={handleUsernameBlur}
+                className={`mt-1 block w-full px-3 py-2 border ${usernameAvailable ? 'border-gray-300' : 'border-red-500'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
                 placeholder="Choose a username"
               />
+              {!usernameAvailable && (
+                <div className="text-red-600 text-xs mt-1">This username is already taken.</div>
+              )}
+              {checkingUsername && (
+                <div className="text-gray-500 text-xs mt-1">Checking username...</div>
+              )}
             </div>
 
             <div>
@@ -147,9 +209,16 @@ const Register = () => {
                 required
                 value={formData.email}
                 onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                onBlur={handleEmailBlur}
+                className={`mt-1 block w-full px-3 py-2 border ${emailAvailable ? 'border-gray-300' : 'border-red-500'} rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500`}
                 placeholder="Enter your email"
               />
+              {!emailAvailable && (
+                <div className="text-red-600 text-xs mt-1">This email is already registered.</div>
+              )}
+              {checkingEmail && (
+                <div className="text-gray-500 text-xs mt-1">Checking email...</div>
+              )}
             </div>
 
             <div>
@@ -166,6 +235,107 @@ const Register = () => {
                 placeholder="Enter your phone number"
               />
             </div>
+
+            <div>
+              <label htmlFor="role" className="block text-sm font-medium text-gray-700">
+                Register as
+              </label>
+              <select
+                id="role"
+                name="role"
+                value={formData.role}
+                onChange={handleChange}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                required
+              >
+                <option value="USER">User</option>
+                <option value="DRIVER">Driver</option>
+              </select>
+            </div>
+
+            {formData.role === 'DRIVER' && (
+              <>
+                <div>
+                  <label htmlFor="licenseNumber" className="block text-sm font-medium text-gray-700">
+                    License Number
+                  </label>
+                  <input
+                    id="licenseNumber"
+                    name="licenseNumber"
+                    type="text"
+                    required
+                    value={formData.licenseNumber}
+                    onChange={handleChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter your license number"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="vehicleType" className="block text-sm font-medium text-gray-700">
+                    Vehicle Type
+                  </label>
+                  <select
+                    id="vehicleType"
+                    name="vehicleType"
+                    required
+                    value={formData.vehicleType}
+                    onChange={handleChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select vehicle type</option>
+                    <option value="SEDAN">Sedan</option>
+                    <option value="SUV">SUV</option>
+                    <option value="HATCHBACK">Hatchback</option>
+                    <option value="MINIVAN">Minivan</option>
+                  </select>
+                </div>
+                <div>
+                  <label htmlFor="vehicleModel" className="block text-sm font-medium text-gray-700">
+                    Vehicle Model
+                  </label>
+                  <input
+                    id="vehicleModel"
+                    name="vehicleModel"
+                    type="text"
+                    required
+                    value={formData.vehicleModel}
+                    onChange={handleChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter your vehicle model"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="vehicleColor" className="block text-sm font-medium text-gray-700">
+                    Vehicle Color
+                  </label>
+                  <input
+                    id="vehicleColor"
+                    name="vehicleColor"
+                    type="text"
+                    required
+                    value={formData.vehicleColor}
+                    onChange={handleChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter your vehicle color"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="licensePlate" className="block text-sm font-medium text-gray-700">
+                    License Plate
+                  </label>
+                  <input
+                    id="licensePlate"
+                    name="licensePlate"
+                    type="text"
+                    required
+                    value={formData.licensePlate}
+                    onChange={handleChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter your license plate"
+                  />
+                </div>
+              </>
+            )}
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
@@ -229,7 +399,7 @@ const Register = () => {
           <div>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !usernameAvailable || !emailAvailable}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Creating account...' : 'Create account'}

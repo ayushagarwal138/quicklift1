@@ -60,6 +60,12 @@ public class JwtTokenUtil {
         return createToken(claims, username);
     }
 
+    public String generateToken(String username, java.util.List<String> roles) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("roles", roles);
+        return createToken(claims, username);
+    }
+
     private String createToken(Map<String, Object> claims, String subject) {
         return Jwts.builder()
                 .setClaims(claims)

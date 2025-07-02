@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { jwtDecode } from 'jwt-decode';
 import { authAPI } from '../api/auth';
 
 const AuthContext = createContext();
@@ -20,48 +21,54 @@ export const AuthProvider = ({ children }) => {
       try {
         const token = localStorage.getItem('token');
         const savedUser = localStorage.getItem('user');
-        
+        console.log('[AuthProvider] Initializing. token:', token, 'savedUser:', savedUser);
         if (token && savedUser) {
-          // Verify token is still valid (optional - you can add API call here)
           setUser(JSON.parse(savedUser));
         }
       } catch (error) {
         console.error('Error initializing auth:', error);
-        // Clear invalid data
         localStorage.removeItem('token');
         localStorage.removeItem('user');
       } finally {
         setLoading(false);
       }
     };
-
     initializeAuth();
   }, []);
+
+  useEffect(() => {
+    console.log('[AuthProvider] user state changed:', user);
+  }, [user]);
 
   const login = async (username, password) => {
     try {
       const response = await authAPI.login({ username, password });
-      
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify({
-        id: response.id,
-        username: response.username,
-        email: response.email,
-        role: response.role
-      }));
-      
-      setUser({
-        id: response.id,
-        username: response.username,
-        email: response.email,
-        role: response.role
-      });
-      
+      console.log('[AuthProvider] login response:', response);
+      const token = response.token;
+      const decodedToken = jwtDecode(token);
+
+      // Always set roles as an array
+      const roles = decodedToken.roles
+        ? Array.isArray(decodedToken.roles)
+          ? decodedToken.roles
+          : [decodedToken.roles]
+        : decodedToken.role
+        ? [decodedToken.role]
+        : [];
+
+      const userData = {
+        username: decodedToken.sub,
+        roles,
+      };
+
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(userData));
+      setUser(userData);
       return { success: true };
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data || 'Login failed' 
+      return {
+        success: false,
+        error: error.response?.data || 'Login failed',
       };
     }
   };
@@ -69,27 +76,32 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       const response = await authAPI.register(userData);
-      
-      localStorage.setItem('token', response.token);
-      localStorage.setItem('user', JSON.stringify({
-        id: response.id,
-        username: response.username,
-        email: response.email,
-        role: response.role
-      }));
-      
-      setUser({
-        id: response.id,
-        username: response.username,
-        email: response.email,
-        role: response.role
-      });
-      
+      console.log('[AuthProvider] register response:', response);
+      const token = response.token;
+      const decodedToken = jwtDecode(token);
+
+      // Always set roles as an array
+      const roles = decodedToken.roles
+        ? Array.isArray(decodedToken.roles)
+          ? decodedToken.roles
+          : [decodedToken.roles]
+        : decodedToken.role
+        ? [decodedToken.role]
+        : [];
+
+      const newUserData = {
+        username: decodedToken.sub,
+        roles,
+      };
+
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(newUserData));
+      setUser(newUserData);
       return { success: true };
     } catch (error) {
-      return { 
-        success: false, 
-        error: error.response?.data || 'Registration failed' 
+      return {
+        success: false,
+        error: error.response?.data || 'Registration failed',
       };
     }
   };

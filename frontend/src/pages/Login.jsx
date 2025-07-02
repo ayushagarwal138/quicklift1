@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Car, Eye, EyeOff } from 'lucide-react';
@@ -12,8 +12,18 @@ const Login = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (user) {
+      if (user.roles?.includes('DRIVER')) {
+        navigate('/driver/dashboard');
+      } else if (user.roles?.includes('USER')) {
+        navigate('/user/dashboard');
+      }
+    }
+  }, [user, navigate]);
 
   const handleChange = (e) => {
     setFormData({
@@ -29,9 +39,7 @@ const Login = () => {
 
     const result = await login(formData.username, formData.password);
     
-    if (result.success) {
-      navigate('/');
-    } else {
+    if (!result.success) {
       setError(result.error);
     }
     

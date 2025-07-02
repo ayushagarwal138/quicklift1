@@ -30,6 +30,13 @@ public class UserRegistrationRequest {
     
     private String role;
     
+    // Driver-specific fields
+    private String licenseNumber;
+    private String vehicleType;
+    private String vehicleModel;
+    private String vehicleColor;
+    private String licensePlate;
+    
     // Constructors
     public UserRegistrationRequest() {}
     
@@ -64,4 +71,19 @@ public class UserRegistrationRequest {
     
     public String getRole() { return role; }
     public void setRole(String role) { this.role = role; }
+
+    public String getLicenseNumber() { return licenseNumber; }
+    public void setLicenseNumber(String licenseNumber) { this.licenseNumber = licenseNumber; }
+
+    public String getVehicleType() { return vehicleType; }
+    public void setVehicleType(String vehicleType) { this.vehicleType = vehicleType; }
+
+    public String getVehicleModel() { return vehicleModel; }
+    public void setVehicleModel(String vehicleModel) { this.vehicleModel = vehicleModel; }
+
+    public String getVehicleColor() { return vehicleColor; }
+    public void setVehicleColor(String vehicleColor) { this.vehicleColor = vehicleColor; }
+
+    public String getLicensePlate() { return licensePlate; }
+    public void setLicensePlate(String licensePlate) { this.licensePlate = licensePlate; }
 } 

@@ -3,6 +3,7 @@ package com.rideshare.backend.model;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.math.BigDecimal;
 import java.util.HashSet;
@@ -48,6 +49,7 @@ public class Driver {
     private Integer totalRides = 0;
     
     @OneToMany(mappedBy = "driver", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private Set<Trip> trips = new HashSet<>();
     
     private boolean isVerified = false;

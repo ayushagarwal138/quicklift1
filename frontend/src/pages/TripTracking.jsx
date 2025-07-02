@@ -1,325 +1,217 @@
-import React, { useState, useEffect } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { 
-  MapPin, 
-  Clock, 
-  Car, 
-  Phone, 
-  MessageCircle, 
-  Navigation,
-  User,
-  Star,
-  Shield,
-  CheckCircle,
-  AlertCircle
-} from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
+import L from 'leaflet';
+import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
+import { tripsAPI } from '../api/trips';
+import { useToast } from '../context/ToastContext';
+import { Car, MapPin, Navigation, User, CheckCircle, Clock, Send } from 'lucide-react';
+
+// Fix for default marker icon
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+});
+
+const driverIcon = new L.Icon({
+    iconUrl: 'https://img.icons8.com/ios-filled/50/000000/car.png',
+    iconSize: [35, 35],
+    iconAnchor: [17, 35],
+    popupAnchor: [0, -35]
+});
 
 const TripTracking = () => {
-  const location = useLocation();
+  const { tripId } = useParams();
   const navigate = useNavigate();
-  const [tripStatus, setTripStatus] = useState('driver-assigned'); // driver-assigned, driver-arriving, trip-started, trip-completed
-  const [driverInfo, setDriverInfo] = useState({
-    name: 'Rajesh Kumar',
-    phone: '+91 98765 43210',
-    vehicleNumber: 'MH-12-AB-1234',
-    vehicleModel: 'Swift Dzire',
-    rating: 4.8,
-    totalRides: 1250,
-    eta: '5 min',
-    distance: '1.2 km'
-  });
-  const [tripProgress, setTripProgress] = useState({
-    pickupLocation: '',
-    destination: '',
-    distance: '8.5 km',
-    duration: '15 min',
-    fare: 0
-  });
+  const { error, info } = useToast();
+  
+  const [trip, setTrip] = useState(null);
+  const [driverLocation, setDriverLocation] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const stompClient = useRef(null);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
 
   useEffect(() => {
-    if (location.state?.bookingDetails) {
-      const details = location.state.bookingDetails;
-      setTripProgress({
-        pickupLocation: details.pickupLocation,
-        destination: details.destination,
-        distance: details.distance || '8.5 km',
-        duration: details.duration || '15 min',
-        fare: details.fare?.total || 0
-      });
-    }
-
-    // Simulate trip progress
-    const progressInterval = setInterval(() => {
-      setTripStatus(prevStatus => {
-        switch (prevStatus) {
-          case 'driver-assigned':
-            return 'driver-arriving';
-          case 'driver-arriving':
-            setTimeout(() => setTripStatus('trip-started'), 5000);
-            return 'driver-arriving';
-          case 'trip-started':
-            setTimeout(() => setTripStatus('trip-completed'), 10000);
-            return 'trip-started';
-          default:
-            return prevStatus;
+    const fetchTripData = async () => {
+      try {
+        const tripData = await tripsAPI.getTripById(tripId);
+        setTrip(tripData);
+        if (tripData.driver) {
+           // Set initial driver location if available, otherwise use pickup location
+           setDriverLocation({ 
+               lat: tripData.driver.currentLatitude || tripData.pickupLatitude,
+               lng: tripData.driver.currentLongitude || tripData.pickupLongitude
+            });
         }
-      });
-    }, 3000);
+        setIsLoading(false);
+      } catch (err) {
+        error('Could not fetch trip details.');
+        setIsLoading(false);
+      }
+    };
 
-    return () => clearInterval(progressInterval);
-  }, [location.state]);
+    fetchTripData();
+    
+    // Setup WebSocket connection
+    const socketFactory = () => new SockJS('http://localhost:8080/ws');
+    
+    const client = new Client({
+        webSocketFactory: socketFactory,
+        debug: (str) => {
+            console.log(new Date(), str);
+        },
+        reconnectDelay: 5000,
+        heartbeatIncoming: 4000,
+        heartbeatOutgoing: 4000,
+    });
 
-  const getStatusMessage = () => {
-    switch (tripStatus) {
-      case 'driver-assigned':
-        return 'Driver has been assigned to your trip';
-      case 'driver-arriving':
-        return 'Driver is on the way to pickup location';
-      case 'trip-started':
-        return 'Trip in progress - heading to destination';
-      case 'trip-completed':
-        return 'Trip completed successfully';
-      default:
-        return 'Processing your request';
-    }
-  };
+    client.onConnect = (frame) => {
+        info('Connected to trip tracking!');
+        client.subscribe(`/topic/trip/${tripId}/location`, (message) => {
+            const locationUpdate = JSON.parse(message.body);
+            setDriverLocation({ lat: locationUpdate.latitude, lng: locationUpdate.longitude });
+        });
+        client.subscribe(`/topic/trip/${tripId}/status`, (message) => {
+            const updatedTrip = JSON.parse(message.body);
+            setTrip(updatedTrip);
+        });
+        client.subscribe(`/topic/trip/${tripId}/chat`, (message) => {
+            setChatMessages((prev) => [...prev, { sender: 'other', text: message.body }]);
+        });
+    };
 
-  const getStatusIcon = () => {
-    switch (tripStatus) {
-      case 'driver-assigned':
-        return <Car className="w-6 h-6 text-blue-600" />;
-      case 'driver-arriving':
-        return <Navigation className="w-6 h-6 text-orange-600" />;
-      case 'trip-started':
-        return <MapPin className="w-6 h-6 text-green-600" />;
-      case 'trip-completed':
-        return <CheckCircle className="w-6 h-6 text-green-600" />;
-      default:
-        return <Clock className="w-6 h-6 text-gray-600" />;
-    }
-  };
+    client.onStompError = (frame) => {
+        console.error('Broker reported error: ' + frame.headers['message']);
+        console.error('Additional details: ' + frame.body);
+    };
 
-  const handleCallDriver = () => {
-    window.open(`tel:${driverInfo.phone}`, '_self');
-  };
+    client.activate();
+    stompClient.current = client;
 
-  const handleMessageDriver = () => {
-    // In a real app, this would open a chat interface
-    alert('Chat feature coming soon!');
-  };
-
-  const handleEmergency = () => {
-    // In a real app, this would trigger emergency protocols
-    alert('Emergency contact: 100 (Police) or 108 (Ambulance)');
-  };
-
-  if (tripStatus === 'trip-completed') {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
-          <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Trip Completed!</h2>
-          <p className="text-gray-600 mb-6">Thank you for choosing our service.</p>
-          
-          <div className="bg-gray-50 rounded-lg p-4 mb-6">
-            <div className="flex justify-between items-center mb-2">
-              <span className="text-gray-600">Total Fare:</span>
-              <span className="font-bold text-lg">₹{tripProgress.fare?.toFixed(2) || '0.00'}</span>
-            </div>
-            <div className="flex justify-between items-center text-sm text-gray-500">
-              <span>Distance: {tripProgress.distance}</span>
-              <span>Duration: {tripProgress.duration}</span>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <button
-              onClick={() => navigate('/book')}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-semibold transition-colors duration-200"
-            >
-              Book Another Ride
-            </button>
-            <button
-              onClick={() => navigate('/history')}
-              className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 py-3 px-6 rounded-lg font-semibold transition-colors duration-200"
-            >
-              View Trip History
-            </button>
-          </div>
-        </div>
-      </div>
-    );
+    return () => {
+      if (stompClient.current) {
+        stompClient.current.deactivate();
+      }
+    };
+  }, [tripId, error, info]);
+  
+  if (isLoading) return <div className="text-center py-10">Loading Trip Details...</div>;
+  if (!trip) return <div className="text-center py-10">Trip not found.</div>;
+  
+  const pickupPosition = [trip.pickupLatitude, trip.pickupLongitude];
+  const destinationPosition = [trip.destinationLatitude, trip.destinationLongitude];
+  const driverPosition = driverLocation ? [driverLocation.lat, driverLocation.lng] : null;
+  
+  const bounds = [pickupPosition, destinationPosition];
+  if (driverPosition) {
+      bounds.push(driverPosition);
   }
+
+  const sendChatMessage = () => {
+    if (chatInput.trim() && stompClient.current && stompClient.current.connected) {
+      stompClient.current.publish({
+        destination: `/app/chat/${tripId}`,
+        body: chatInput,
+      });
+      setChatMessages((prev) => [...prev, { sender: 'me', text: chatInput }]);
+      setChatInput('');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              {getStatusIcon()}
-              <div>
-                <h1 className="text-lg font-semibold text-gray-900">Trip in Progress</h1>
-                <p className="text-sm text-gray-600">{getStatusMessage()}</p>
-              </div>
+        <div className="max-w-6xl mx-auto py-8 px-4">
+             <div className="text-center mb-8">
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">Tracking Your Trip</h1>
+                <p className="text-gray-600">Trip ID: {trip.id}</p>
             </div>
-            <button
-              onClick={() => navigate('/book')}
-              className="text-blue-600 hover:text-blue-700 font-medium"
-            >
-              Book New Ride
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="max-w-4xl mx-auto px-4 py-6">
-        <div className="grid lg:grid-cols-3 gap-6">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Map Placeholder */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <div className="aspect-video bg-gray-200 rounded-lg flex items-center justify-center">
-                <div className="text-center">
-                  <MapPin className="w-12 h-12 text-gray-400 mx-auto mb-2" />
-                  <p className="text-gray-600">Live Map View</p>
-                  <p className="text-sm text-gray-500">Real-time driver location</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Trip Details */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Trip Details</h3>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between py-3 border-b border-gray-100">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-green-500 rounded-full mr-3"></div>
-                    <span className="font-medium">Pickup</span>
-                  </div>
-                  <span className="text-gray-600">{tripProgress.pickupLocation}</span>
-                </div>
-                <div className="flex items-center justify-between py-3">
-                  <div className="flex items-center">
-                    <div className="w-3 h-3 bg-red-500 rounded-full mr-3"></div>
-                    <span className="font-medium">Destination</span>
-                  </div>
-                  <span className="text-gray-600">{tripProgress.destination}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Safety Features */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Safety & Support</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <button
-                  onClick={handleEmergency}
-                  className="flex items-center p-4 border border-red-200 rounded-lg hover:bg-red-50 transition-colors"
-                >
-                  <AlertCircle className="w-6 h-6 text-red-600 mr-3" />
-                  <div className="text-left">
-                    <div className="font-medium text-red-900">Emergency</div>
-                    <div className="text-sm text-red-700">Get immediate help</div>
-                  </div>
-                </button>
-                <div className="flex items-center p-4 border border-gray-200 rounded-lg">
-                  <Shield className="w-6 h-6 text-blue-600 mr-3" />
-                  <div className="text-left">
-                    <div className="font-medium text-gray-900">Trip Protection</div>
-                    <div className="text-sm text-gray-600">24/7 safety monitoring</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Driver Info & Actions */}
-          <div className="lg:col-span-1 space-y-6">
-            {/* Driver Information */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Driver</h3>
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <User className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <div className="font-medium text-gray-900">{driverInfo.name}</div>
-                    <div className="flex items-center text-sm text-gray-600">
-                      <Star className="w-4 h-4 text-yellow-400 mr-1" />
-                      {driverInfo.rating} ({driverInfo.totalRides} rides)
+            
+             <div className="grid lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 bg-white rounded-lg shadow-lg p-2 h-[600px] flex flex-col">
+                    <MapContainer bounds={bounds} style={{ height: '100%', width: '100%' }} boundsOptions={{ padding: [50, 50] }}>
+                        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                        <Marker position={pickupPosition}>
+                            <Popup>Pickup: {trip.pickupLocation}</Popup>
+                        </Marker>
+                        <Marker position={destinationPosition}>
+                            <Popup>Destination: {trip.destination}</Popup>
+                        </Marker>
+                        {driverPosition && (
+                             <Marker position={driverPosition} icon={driverIcon}>
+                                <Popup>Your driver is here.</Popup>
+                            </Marker>
+                        )}
+                        <Polyline positions={[pickupPosition, destinationPosition]} color="blue" />
+                    </MapContainer>
+                    {/* Chat Box */}
+                    <div className="mt-4 flex flex-col flex-grow justify-end">
+                      <div className="bg-gray-100 rounded-lg p-4 h-64 overflow-y-auto flex flex-col-reverse">
+                        {[...chatMessages].reverse().map((msg, idx) => (
+                          <div key={idx} className={`mb-2 flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
+                            <div className={`px-3 py-2 rounded-lg max-w-xs ${msg.sender === 'me' ? 'bg-blue-500 text-white' : 'bg-white text-gray-800 border'}`}>{msg.text}</div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex mt-2">
+                        <input
+                          type="text"
+                          value={chatInput}
+                          onChange={e => setChatInput(e.target.value)}
+                          onKeyDown={e => { if (e.key === 'Enter') sendChatMessage(); }}
+                          className="flex-grow px-3 py-2 rounded-l-lg border border-gray-300 focus:outline-none focus:ring-blue-500"
+                          placeholder="Type a message..."
+                        />
+                        <button
+                          onClick={sendChatMessage}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-r-lg flex items-center"
+                        >
+                          <Send className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
-                  </div>
                 </div>
-
-                <div className="space-y-2">
-                  <div className="flex items-center text-sm">
-                    <Car className="w-4 h-4 text-gray-400 mr-2" />
-                    <span className="text-gray-600">{driverInfo.vehicleModel}</span>
-                  </div>
-                  <div className="flex items-center text-sm">
-                    <MapPin className="w-4 h-4 text-gray-400 mr-2" />
-                    <span className="text-gray-600">{driverInfo.vehicleNumber}</span>
-                  </div>
+                
+                <div className="lg:col-span-1 space-y-6">
+                    <div className="bg-white rounded-lg shadow-lg p-6">
+                        <h3 className="text-xl font-semibold text-gray-900 mb-4">Trip Status: {trip.status}</h3>
+                        <div className="space-y-4">
+                            <div className="flex items-center gap-3">
+                                <MapPin className="w-5 h-5 text-blue-500" />
+                                <div>
+                                    <p className="font-semibold text-sm">From</p>
+                                    <p className="text-xs text-gray-600">{trip.pickupLocation}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <Navigation className="w-5 h-5 text-green-500" />
+                                <div>
+                                    <p className="font-semibold text-sm">To</p>
+                                    <p className="text-xs text-gray-600">{trip.destination}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                     {trip.driver && (
+                        <div className="bg-white rounded-lg shadow-lg p-6">
+                            <h3 className="text-xl font-semibold text-gray-900 mb-4">Driver Details</h3>
+                             <div className="flex items-center space-x-3">
+                                <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
+                                    <User className="w-6 h-6 text-gray-600" />
+                                </div>
+                                <div>
+                                    <p className="font-medium">{trip.driver.user.username}</p>
+                                    <p className="text-sm text-gray-500">{trip.driver.vehicleType} - {trip.driver.vehiclePlateNumber}</p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
-
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-blue-900">ETA to pickup:</span>
-                    <span className="font-medium text-blue-900">{driverInfo.eta}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm mt-1">
-                    <span className="text-blue-700">Distance:</span>
-                    <span className="text-blue-700">{driverInfo.distance}</span>
-                  </div>
-                </div>
-              </div>
             </div>
-
-            {/* Contact Actions */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Driver</h3>
-              <div className="space-y-3">
-                <button
-                  onClick={handleCallDriver}
-                  className="w-full flex items-center justify-center p-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors duration-200"
-                >
-                  <Phone className="w-5 h-5 mr-2" />
-                  Call Driver
-                </button>
-                <button
-                  onClick={handleMessageDriver}
-                  className="w-full flex items-center justify-center p-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors duration-200"
-                >
-                  <MessageCircle className="w-5 h-5 mr-2" />
-                  Message Driver
-                </button>
-              </div>
-            </div>
-
-            {/* Trip Progress */}
-            <div className="bg-white rounded-lg shadow-lg p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Trip Progress</h3>
-              <div className="space-y-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Distance:</span>
-                  <span className="font-medium">{tripProgress.distance}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Duration:</span>
-                  <span className="font-medium">{tripProgress.duration}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Fare:</span>
-                  <span className="font-medium text-green-600">₹{tripProgress.fare?.toFixed(2) || '0.00'}</span>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
-      </div>
     </div>
   );
 };

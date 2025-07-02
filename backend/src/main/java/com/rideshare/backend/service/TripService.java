@@ -8,6 +8,7 @@ import com.rideshare.backend.model.VehicleType;
 import com.rideshare.backend.repository.DriverRepository;
 import com.rideshare.backend.repository.TripRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -23,6 +24,9 @@ public class TripService {
     
     @Autowired
     private DriverRepository driverRepository;
+
+    @Autowired
+    private SimpMessagingTemplate messagingTemplate;
 
     public Trip createTrip(Trip trip) {
         trip.setStatus(TripStatus.REQUESTED);
@@ -76,7 +80,12 @@ public class TripService {
         driver.setStatus(DriverStatus.BUSY);
         driverRepository.save(driver);
 
-        return tripRepository.save(trip);
+        Trip updatedTrip = tripRepository.save(trip);
+        // Broadcast trip status update
+        messagingTemplate.convertAndSend("/topic/trip/" + tripId + "/status", updatedTrip);
+        // Broadcast to driver
+        messagingTemplate.convertAndSend("/topic/driver/" + driverId + "/status", updatedTrip);
+        return updatedTrip;
     }
 
     public Trip startTrip(Long tripId) {
@@ -90,7 +99,13 @@ public class TripService {
         trip.setStatus(TripStatus.STARTED);
         trip.setStartedAt(LocalDateTime.now());
 
-        return tripRepository.save(trip);
+        Trip updatedTrip = tripRepository.save(trip);
+        // Broadcast trip status update
+        messagingTemplate.convertAndSend("/topic/trip/" + tripId + "/status", updatedTrip);
+        if (trip.getDriver() != null) {
+            messagingTemplate.convertAndSend("/topic/driver/" + trip.getDriver().getId() + "/status", updatedTrip);
+        }
+        return updatedTrip;
     }
 
     public Trip completeTrip(Long tripId, BigDecimal fare) {
@@ -113,7 +128,13 @@ public class TripService {
             driverRepository.save(driver);
         }
 
-        return tripRepository.save(trip);
+        Trip updatedTrip = tripRepository.save(trip);
+        // Broadcast trip status update
+        messagingTemplate.convertAndSend("/topic/trip/" + tripId + "/status", updatedTrip);
+        if (trip.getDriver() != null) {
+            messagingTemplate.convertAndSend("/topic/driver/" + trip.getDriver().getId() + "/status", updatedTrip);
+        }
+        return updatedTrip;
     }
 
     public Trip cancelTrip(Long tripId) {
@@ -134,7 +155,13 @@ public class TripService {
             driverRepository.save(driver);
         }
 
-        return tripRepository.save(trip);
+        Trip updatedTrip = tripRepository.save(trip);
+        // Broadcast trip status update
+        messagingTemplate.convertAndSend("/topic/trip/" + tripId + "/status", updatedTrip);
+        if (trip.getDriver() != null) {
+            messagingTemplate.convertAndSend("/topic/driver/" + trip.getDriver().getId() + "/status", updatedTrip);
+        }
+        return updatedTrip;
     }
 
     public List<Driver> findAvailableDrivers(VehicleType vehicleType) {
@@ -153,5 +180,53 @@ public class TripService {
         trip.setReview(review);
 
         return tripRepository.save(trip);
+    }
+
+    public Trip rejectTrip(Long tripId, Long driverId) {
+        Trip trip = tripRepository.findById(tripId)
+            .orElseThrow(() -> new RuntimeException("Trip not found"));
+        // Optionally, keep a list of rejected drivers (not implemented here)
+        // For now, just log or handle as needed. You may want to add a field to Trip for rejectedDrivers.
+        // This implementation does nothing except return the trip.
+        // You can extend this to mark the trip as rejected by this driver, or remove from their available list.
+        return trip;
+    }
+
+    public Trip createTripForDriver(com.rideshare.backend.dto.TripRequest tripRequest, com.rideshare.backend.model.User user, Long driverId) {
+        Trip trip = new Trip();
+        trip.setUser(user);
+        trip.setPickupLocation(tripRequest.getPickupLocation());
+        trip.setDestination(tripRequest.getDestination());
+        trip.setRequestedVehicleType(tripRequest.getVehicleType());
+        trip.setPickupLatitude(tripRequest.getPickupLatitude());
+        trip.setPickupLongitude(tripRequest.getPickupLongitude());
+        trip.setDestinationLatitude(tripRequest.getDestinationLatitude());
+        trip.setDestinationLongitude(tripRequest.getDestinationLongitude());
+        trip.setNotes(tripRequest.getNotes());
+        trip.setStatus(TripStatus.REQUESTED);
+        trip.setRequestedAt(java.time.LocalDateTime.now());
+        Driver driver = driverRepository.findById(driverId)
+            .orElseThrow(() -> new RuntimeException("Driver not found"));
+        trip.setDriver(driver);
+        Trip savedTrip = tripRepository.save(trip);
+        // Broadcast new request to driver
+        messagingTemplate.convertAndSend("/topic/driver/" + driverId + "/requests", savedTrip);
+        return savedTrip;
+    }
+
+    public Trip createTripAndAssignDriver(Trip trip) {
+        List<Driver> availableDrivers = driverRepository.findByVehicleTypeAndStatus(
+            trip.getRequestedVehicleType(), DriverStatus.ONLINE);
+        if (availableDrivers.isEmpty()) {
+            throw new RuntimeException("No drivers available");
+        }
+        Driver selectedDriver = availableDrivers.get(0); // You can randomize or optimize selection
+        trip.setDriver(selectedDriver);
+        trip.setStatus(TripStatus.REQUESTED);
+        trip.setRequestedAt(LocalDateTime.now());
+        Trip savedTrip = tripRepository.save(trip);
+        // Notify driver of new trip request
+        messagingTemplate.convertAndSend("/topic/driver/" + selectedDriver.getId() + "/requests", savedTrip);
+        return savedTrip;
     }
 } 

@@ -9,12 +9,16 @@ import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import BookRide from './pages/BookRide';
-import BookingConfirmation from './pages/BookingConfirmation';
 import TripTracking from './pages/TripTracking';
 import TripHistory from './pages/TripHistory';
 import Profile from './pages/Profile';
 import Settings from './pages/Settings';
-import CitySelectorTest from './components/CitySelectorTest';
+import DriverDashboard from './pages/DriverDashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import ConfirmBooking from './pages/ConfirmBooking';
+import SelectDriver from './pages/SelectDriver';
+import UserDashboard from './pages/UserDashboard';
+import WaitingForDriver from './pages/WaitingForDriver';
 
 function App() {
   return (
@@ -22,13 +26,11 @@ function App() {
       <AuthProvider>
         <ToastProvider>
           <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
-            <Header />
             <main>
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
-                <Route path="/test-cities" element={<CitySelectorTest />} />
                 <Route
                   path="/book"
                   element={
@@ -38,18 +40,34 @@ function App() {
                   }
                 />
                 <Route
-                  path="/booking-confirmation"
+                  path="/driver/dashboard"
                   element={
-                    <ProtectedRoute>
-                      <BookingConfirmation />
+                    <ProtectedRoute roles={['DRIVER']}>
+                      <DriverDashboard />
                     </ProtectedRoute>
                   }
                 />
                 <Route
-                  path="/trip-tracking"
+                  path="/admin/dashboard"
+                  element={
+                    <ProtectedRoute roles={['ADMIN']}>
+                      <AdminDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/trips/:tripId"
                   element={
                     <ProtectedRoute>
                       <TripTracking />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/trips/:tripId/confirm"
+                  element={
+                    <ProtectedRoute>
+                      <ConfirmBooking />
                     </ProtectedRoute>
                   }
                 />
@@ -74,6 +92,30 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <Settings />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/select-driver/:tripId"
+                  element={
+                    <ProtectedRoute>
+                      <SelectDriver />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/user/dashboard"
+                  element={
+                    <ProtectedRoute roles={['USER']}>
+                      <UserDashboard />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/waiting-for-driver/:tripId"
+                  element={
+                    <ProtectedRoute>
+                      <WaitingForDriver />
                     </ProtectedRoute>
                   }
                 />

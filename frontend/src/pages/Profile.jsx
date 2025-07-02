@@ -1,55 +1,76 @@
-import React, { useState } from 'react';
-import { User, Mail, Phone, MapPin, Edit, Save, X, Bell, Shield, CreditCard, Settings, LogOut } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { userAPI } from '../api/user';
+import { useToast } from '../context/ToastContext';
+import { User, Mail, Phone, MapPin, Edit, Save, X, Bell, Shield, CreditCard, Settings, LogOut, Camera } from 'lucide-react';
 
 const Profile = () => {
+  const { user, loading: authLoading, setUser: setAuthUser } = useAuth();
+  const { success, error } = useToast();
+  
   const [isEditing, setIsEditing] = useState(false);
-  const [userData, setUserData] = useState({
-    firstName: 'John',
-    lastName: 'Doe',
-    email: 'john.doe@example.com',
-    phone: '+1 (555) 123-4567',
-    address: '123 Main Street, Downtown, City, State 12345',
-    emergencyContact: '+1 (555) 987-6543',
-    preferences: {
-      vehicleType: 'SEDAN',
-      notifications: true,
-      autoConfirm: false,
-      shareLocation: true
-    }
-  });
+  const [userData, setUserData] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newProfilePicUrl, setNewProfilePicUrl] = useState('');
 
-  const [tempData, setTempData] = useState({ ...userData });
-
-  const handleEdit = () => {
-    setTempData({ ...userData });
-    setIsEditing(true);
-  };
-
-  const handleSave = () => {
-    setUserData({ ...tempData });
-    setIsEditing(false);
-  };
-
-  const handleCancel = () => {
-    setTempData({ ...userData });
-    setIsEditing(false);
-  };
-
-  const handleInputChange = (field, value) => {
-    setTempData({
-      ...tempData,
-      [field]: value
-    });
-  };
-
-  const handlePreferenceChange = (preference, value) => {
-    setTempData({
-      ...tempData,
-      preferences: {
-        ...tempData.preferences,
-        [preference]: value
+  useEffect(() => {
+    const fetchUser = async () => {
+      if (!authLoading) {
+        setIsLoading(true);
+        try {
+          const profileData = await userAPI.getProfile();
+          setUserData(profileData);
+          setNewProfilePicUrl(profileData.profilePictureUrl || '');
+        } catch (err) {
+          error('Failed to fetch profile data.');
+        } finally {
+          setIsLoading(false);
+        }
       }
-    });
+    };
+    fetchUser();
+  }, [authLoading, error]);
+
+  const handleSave = async () => {
+    try {
+      const updatedUser = await userAPI.updateProfile(userData);
+      setUserData(updatedUser);
+      // Update user in global context as well
+      setAuthUser(prev => ({ ...prev, ...updatedUser }));
+      setIsEditing(false);
+      success('Profile updated successfully!');
+    } catch (err) {
+      error('Failed to update profile.');
+    }
+  };
+
+  const handleCancel = async () => {
+    setIsEditing(false);
+    // Refetch original data
+    const profileData = await userAPI.getProfile();
+    setUserData(profileData);
+  };
+  
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setUserData({ ...userData, [name]: value });
+  };
+  
+  const handlePictureUpdate = async () => {
+      if (!newProfilePicUrl) {
+          error("Please enter a valid URL.");
+          return;
+      }
+      try {
+          const updatedUser = await userAPI.updateProfilePicture(newProfilePicUrl);
+          setUserData(updatedUser);
+          setAuthUser(prev => ({ ...prev, ...updatedUser }));
+          setIsModalOpen(false);
+          success('Profile picture updated!');
+      } catch (err) {
+          error('Failed to update profile picture.');
+      }
   };
 
   const vehicleTypes = [
@@ -59,6 +80,14 @@ const Profile = () => {
     { id: 'MOTORCYCLE', name: 'Motorcycle', icon: '🏍️' },
     { id: 'VAN', name: 'Van', icon: '🚐' }
   ];
+
+  if (authLoading || isLoading) {
+    return <div className="text-center py-10">Loading Profile...</div>;
+  }
+  
+  if (!userData) {
+      return <div className="text-center py-10">Could not load profile.</div>
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -74,105 +103,129 @@ const Profile = () => {
           <div className="lg:col-span-2 space-y-6">
             {/* Personal Information */}
             <div className="bg-white rounded-lg shadow-lg p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-gray-900">Personal Information</h2>
-                {!isEditing ? (
-                  <button
-                    onClick={handleEdit}
-                    className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
-                  >
-                    <Edit className="w-4 h-4" />
-                    Edit
+              <div className="flex flex-col items-center md:flex-row md:items-start gap-8">
+                {/* Profile Picture */}
+                <div className="relative">
+                  <img 
+                    src={userData.profilePictureUrl || `https://ui-avatars.com/api/?name=${userData.firstName}+${userData.lastName}&background=random&size=128`} 
+                    alt="Profile" 
+                    className="w-32 h-32 rounded-full object-cover ring-4 ring-blue-500 ring-offset-2"
+                  />
+                  <button 
+                    onClick={() => setIsModalOpen(true)}
+                    className="absolute bottom-0 right-0 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700 transition-transform transform hover:scale-110">
+                    <Camera className="w-5 h-5"/>
                   </button>
-                ) : (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleSave}
-                      className="flex items-center gap-2 text-green-600 hover:text-green-700 font-medium"
-                    >
-                      <Save className="w-4 h-4" />
-                      Save
-                    </button>
-                    <button
-                      onClick={handleCancel}
-                      className="flex items-center gap-2 text-gray-600 hover:text-gray-700 font-medium"
-                    >
-                      <X className="w-4 h-4" />
-                      Cancel
-                    </button>
-                  </div>
-                )}
-              </div>
+                </div>
 
-              <div className="grid md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
-                  <input
-                    type="text"
-                    value={isEditing ? tempData.firstName : userData.firstName}
-                    onChange={(e) => handleInputChange('firstName', e.target.value)}
-                    disabled={!isEditing}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
-                  <input
-                    type="text"
-                    value={isEditing ? tempData.lastName : userData.lastName}
-                    onChange={(e) => handleInputChange('lastName', e.target.value)}
-                    disabled={!isEditing}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <input
-                      type="email"
-                      value={isEditing ? tempData.email : userData.email}
-                      onChange={(e) => handleInputChange('email', e.target.value)}
-                      disabled={!isEditing}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
-                    />
+                {/* Profile Info */}
+                <div className="flex-1 text-center md:text-left">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-semibold text-gray-900">Personal Information</h2>
+                    {!isEditing ? (
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        <Edit className="w-4 h-4" />
+                        Edit
+                      </button>
+                    ) : (
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleSave}
+                          className="flex items-center gap-2 text-green-600 hover:text-green-700 font-medium"
+                        >
+                          <Save className="w-4 h-4" />
+                          Save
+                        </button>
+                        <button
+                          onClick={handleCancel}
+                          className="flex items-center gap-2 text-gray-600 hover:text-gray-700 font-medium"
+                        >
+                          <X className="w-4 h-4" />
+                          Cancel
+                        </button>
+                      </div>
+                    )}
                   </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                    <input
-                      type="tel"
-                      value={isEditing ? tempData.phone : userData.phone}
-                      onChange={(e) => handleInputChange('phone', e.target.value)}
-                      disabled={!isEditing}
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
-                    />
+
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">First Name</label>
+                      <input
+                        type="text"
+                        name="firstName"
+                        value={isEditing ? userData.firstName : userData.firstName}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Last Name</label>
+                      <input
+                        type="text"
+                        name="lastName"
+                        value={isEditing ? userData.lastName : userData.lastName}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <input
+                          type="email"
+                          name="email"
+                          value={isEditing ? userData.email : userData.email}
+                          onChange={handleInputChange}
+                          disabled={!isEditing}
+                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <input
+                          type="tel"
+                          name="phone"
+                          value={isEditing ? userData.phone : userData.phone}
+                          onChange={handleInputChange}
+                          disabled={!isEditing}
+                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
+                        />
+                      </div>
+                    </div>
+                    <div className="md:col-span-2">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-3 text-gray-400 w-4 h-4" />
+                        <textarea
+                          value={isEditing ? userData.address : userData.address}
+                          onChange={handleInputChange}
+                          disabled={!isEditing}
+                          rows="3"
+                          className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Emergency Contact</label>
+                      <input
+                        type="tel"
+                        name="emergencyContact"
+                        value={isEditing ? userData.emergencyContact : userData.emergencyContact}
+                        onChange={handleInputChange}
+                        disabled={!isEditing}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
+                      />
+                    </div>
                   </div>
-                </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Address</label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-3 text-gray-400 w-4 h-4" />
-                    <textarea
-                      value={isEditing ? tempData.address : userData.address}
-                      onChange={(e) => handleInputChange('address', e.target.value)}
-                      disabled={!isEditing}
-                      rows="3"
-                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Emergency Contact</label>
-                  <input
-                    type="tel"
-                    value={isEditing ? tempData.emergencyContact : userData.emergencyContact}
-                    onChange={(e) => handleInputChange('emergencyContact', e.target.value)}
-                    disabled={!isEditing}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-50"
-                  />
                 </div>
               </div>
             </div>
@@ -190,10 +243,10 @@ const Profile = () => {
                       <button
                         key={vehicle.id}
                         type="button"
-                        onClick={() => handlePreferenceChange('vehicleType', vehicle.id)}
+                        onClick={() => handleInputChange({ target: { name: 'vehicleType', value: vehicle.id } })}
                         disabled={!isEditing}
                         className={`p-3 rounded-lg border-2 transition-all duration-200 ${
-                          (isEditing ? tempData.preferences.vehicleType : userData.preferences.vehicleType) === vehicle.id
+                          (isEditing ? userData.vehicleType : userData.vehicleType) === vehicle.id
                             ? 'border-blue-500 bg-blue-50'
                             : 'border-gray-200 hover:border-gray-300'
                         } disabled:opacity-50`}
@@ -218,8 +271,8 @@ const Profile = () => {
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={isEditing ? tempData.preferences.notifications : userData.preferences.notifications}
-                        onChange={(e) => handlePreferenceChange('notifications', e.target.checked)}
+                        checked={isEditing ? userData.notifications : userData.notifications}
+                        onChange={(e) => handleInputChange({ target: { name: 'notifications', value: e.target.checked } })}
                         disabled={!isEditing}
                         className="sr-only peer"
                       />
@@ -238,8 +291,8 @@ const Profile = () => {
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={isEditing ? tempData.preferences.autoConfirm : userData.preferences.autoConfirm}
-                        onChange={(e) => handlePreferenceChange('autoConfirm', e.target.checked)}
+                        checked={isEditing ? userData.autoConfirm : userData.autoConfirm}
+                        onChange={(e) => handleInputChange({ target: { name: 'autoConfirm', value: e.target.checked } })}
                         disabled={!isEditing}
                         className="sr-only peer"
                       />
@@ -258,8 +311,8 @@ const Profile = () => {
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={isEditing ? tempData.preferences.shareLocation : userData.preferences.shareLocation}
-                        onChange={(e) => handlePreferenceChange('shareLocation', e.target.checked)}
+                        checked={isEditing ? userData.shareLocation : userData.shareLocation}
+                        onChange={(e) => handleInputChange({ target: { name: 'shareLocation', value: e.target.checked } })}
                         disabled={!isEditing}
                         className="sr-only peer"
                       />

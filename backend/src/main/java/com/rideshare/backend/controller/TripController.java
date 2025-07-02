@@ -1,9 +1,11 @@
 package com.rideshare.backend.controller;
 
 import com.rideshare.backend.dto.TripRequest;
+import com.rideshare.backend.dto.FareResponse;
 import com.rideshare.backend.model.Trip;
 import com.rideshare.backend.model.TripStatus;
 import com.rideshare.backend.model.User;
+import com.rideshare.backend.service.FareService;
 import com.rideshare.backend.service.TripService;
 import com.rideshare.backend.service.UserService;
 import jakarta.validation.Valid;
@@ -28,6 +30,27 @@ public class TripController {
     @Autowired
     private UserService userService;
 
+    @Autowired
+    private FareService fareService;
+
+    @PostMapping("/estimate")
+    public ResponseEntity<?> estimateFare(@Valid @RequestBody TripRequest tripRequest) {
+        try {
+            double distance = fareService.calculateDistance(
+                tripRequest.getPickupLatitude().doubleValue(),
+                tripRequest.getPickupLongitude().doubleValue(),
+                tripRequest.getDestinationLatitude().doubleValue(),
+                tripRequest.getDestinationLongitude().doubleValue()
+            );
+            BigDecimal estimatedFare = fareService.calculateFare(tripRequest);
+            return ResponseEntity.ok(new FareResponse(estimatedFare, distance));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body("An error occurred while estimating the fare.");
+        }
+    }
+
     @PostMapping("/book")
     public ResponseEntity<?> bookTrip(@Valid @RequestBody TripRequest tripRequest) {
         try {
@@ -39,6 +62,8 @@ public class TripController {
                 return ResponseEntity.badRequest().body("User not found");
             }
 
+            BigDecimal fare = fareService.calculateFare(tripRequest);
+
             Trip trip = new Trip();
             trip.setUser(user.get());
             trip.setPickupLocation(tripRequest.getPickupLocation());
@@ -49,8 +74,9 @@ public class TripController {
             trip.setDestinationLatitude(tripRequest.getDestinationLatitude());
             trip.setDestinationLongitude(tripRequest.getDestinationLongitude());
             trip.setNotes(tripRequest.getNotes());
+            trip.setFare(fare);
 
-            Trip createdTrip = tripService.createTrip(trip);
+            Trip createdTrip = tripService.createTripAndAssignDriver(trip);
             return ResponseEntity.ok(createdTrip);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
@@ -113,5 +139,21 @@ public class TripController {
     public ResponseEntity<?> getTripsByDriver(@PathVariable Long driverId) {
         List<Trip> trips = tripService.findByDriverId(driverId);
         return ResponseEntity.ok(trips);
+    }
+
+    @PostMapping("/request-to-driver")
+    public ResponseEntity<?> requestToDriver(@RequestBody TripRequest tripRequest, @RequestParam Long driverId) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String username = authentication.getName();
+            Optional<User> user = userService.findByUsername(username);
+            if (user.isEmpty()) {
+                return ResponseEntity.badRequest().body("User not found");
+            }
+            Trip trip = tripService.createTripForDriver(tripRequest, user.get(), driverId);
+            return ResponseEntity.ok(trip);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
     }
 } 

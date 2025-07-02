@@ -1,21 +1,23 @@
 package com.rideshare.backend.dto;
 
+import java.util.List;
+
 public class AuthResponse {
     private String token;
     private String type = "Bearer";
     private Long id;
     private String username;
     private String email;
-    private String role;
+    private List<String> roles;
 
     public AuthResponse() {}
 
-    public AuthResponse(String token, Long id, String username, String email, String role) {
+    public AuthResponse(String token, Long id, String username, String email, List<String> roles) {
         this.token = token;
         this.id = id;
         this.username = username;
         this.email = email;
-        this.role = role;
+        this.roles = roles;
     }
 
     // Getters and Setters
@@ -59,11 +61,11 @@ public class AuthResponse {
         this.email = email;
     }
 
-    public String getRole() {
-        return role;
+    public List<String> getRoles() {
+        return roles;
     }
 
-    public void setRole(String role) {
-        this.role = role;
+    public void setRoles(List<String> roles) {
+        this.roles = roles;
     }
 } 

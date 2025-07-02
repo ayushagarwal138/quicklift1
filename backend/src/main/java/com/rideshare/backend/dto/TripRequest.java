@@ -25,6 +25,8 @@ public class TripRequest {
     
     private String notes;
     
+    private BigDecimal tolls;
+    
     // Constructors
     public TripRequest() {}
     
@@ -58,4 +60,7 @@ public class TripRequest {
     
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }
+
+    public BigDecimal getTolls() { return tolls; }
+    public void setTolls(BigDecimal tolls) { this.tolls = tolls; }
 } 

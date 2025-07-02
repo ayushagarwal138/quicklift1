@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { User, LogOut, Settings, CreditCard, Bell, ChevronDown, LogIn, UserPlus } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 
-const Header = () => {
+const UserHeader = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -120,14 +120,6 @@ const Header = () => {
                           <Settings className="w-4 h-4 mr-3" />
                           Settings
                         </Link>
-                        <Link
-                          to="/payments"
-                          className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors duration-200"
-                          onClick={() => setIsDropdownOpen(false)}
-                        >
-                          <CreditCard className="w-4 h-4 mr-3" />
-                          Payment Methods
-                        </Link>
                       </div>
 
                       {/* Logout */}
@@ -170,4 +162,4 @@ const Header = () => {
   );
 };
 
-export default Header; 
+export default UserHeader; 

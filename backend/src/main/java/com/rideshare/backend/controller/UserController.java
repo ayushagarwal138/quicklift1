@@ -9,6 +9,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -53,6 +54,23 @@ public class UserController {
             user.setFirstName(userDetails.getFirstName());
             user.setLastName(userDetails.getLastName());
             user.setPhoneNumber(userDetails.getPhoneNumber());
+            
+            User updatedUser = userService.updateUser(user);
+            return ResponseEntity.ok(updatedUser);
+        } else {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    @PutMapping("/profile/picture")
+    public ResponseEntity<?> updateProfilePicture(@RequestBody Map<String, String> payload) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        
+        Optional<User> currentUser = userService.findByUsername(username);
+        if (currentUser.isPresent()) {
+            User user = currentUser.get();
+            user.setProfilePictureUrl(payload.get("profilePictureUrl"));
             
             User updatedUser = userService.updateUser(user);
             return ResponseEntity.ok(updatedUser);

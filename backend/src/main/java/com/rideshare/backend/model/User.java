@@ -7,6 +7,7 @@ import jakarta.validation.constraints.Size;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import java.util.Collection;
 import java.util.HashSet;
@@ -46,12 +47,15 @@ public class User implements UserDetails {
     @Size(max = 20)
     private String phoneNumber;
     
+    private String profilePictureUrl;
+    
     @Enumerated(EnumType.STRING)
     private UserRole role = UserRole.USER;
     
     private boolean enabled = true;
     
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private Set<Trip> trips = new HashSet<>();
     
     // Constructors
@@ -90,7 +94,7 @@ public class User implements UserDetails {
     public boolean isEnabled() {
         return enabled;
     }
-
+    
     // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
@@ -114,6 +118,9 @@ public class User implements UserDetails {
     
     public String getPhoneNumber() { return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+    
+    public String getProfilePictureUrl() { return profilePictureUrl; }
+    public void setProfilePictureUrl(String profilePictureUrl) { this.profilePictureUrl = profilePictureUrl; }
     
     public UserRole getRole() { return role; }
     public void setRole(UserRole role) { this.role = role; }
