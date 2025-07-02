@@ -63,6 +63,8 @@ const BookRide = () => {
   const [pickupSuggestions, setPickupSuggestions] = useState([]);
   const [destinationSuggestions, setDestinationSuggestions] = useState([]);
 
+  const [paymentMethod, setPaymentMethod] = useState('CASH');
+
   const MapEvents = () => {
     useMapEvents({
       click(e) {
@@ -196,6 +198,7 @@ const BookRide = () => {
         destinationLongitude: destinationCoords.lng,
         vehicleType,
         notes,
+        paymentMethod,
     };
 
     try {
@@ -346,6 +349,24 @@ const BookRide = () => {
                     </div>
                   </div>
                 )}
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-gray-700 font-semibold mb-2">Payment Method</label>
+                <div className="flex gap-4">
+                  <label>
+                    <input type="radio" name="paymentMethod" value="CASH" checked={paymentMethod === 'CASH'} onChange={() => setPaymentMethod('CASH')} />
+                    <span className="ml-2">Cash</span>
+                  </label>
+                  <label>
+                    <input type="radio" name="paymentMethod" value="CARD" checked={paymentMethod === 'CARD'} onChange={() => setPaymentMethod('CARD')} />
+                    <span className="ml-2">Credit/Debit Card</span>
+                  </label>
+                  <label>
+                    <input type="radio" name="paymentMethod" value="UPI" checked={paymentMethod === 'UPI'} onChange={() => setPaymentMethod('UPI')} />
+                    <span className="ml-2">UPI</span>
+                  </label>
+                </div>
               </div>
 
               <div>

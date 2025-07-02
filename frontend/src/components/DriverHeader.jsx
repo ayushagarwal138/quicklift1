@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Car, LogOut, ChevronDown, User, Settings, Bell } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
@@ -7,6 +7,7 @@ import ThemeToggle from './ThemeToggle';
 const DriverHeader = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
@@ -43,22 +44,22 @@ const DriverHeader = () => {
           {user && user.roles?.includes('DRIVER') && (
             <nav className="hidden md:flex space-x-8">
               <Link
-                to="/driver/dashboard"
-                className="text-white hover:text-yellow-300 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+                to="/driver/pending-requests"
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${location.pathname === '/driver/pending-requests' ? 'bg-blue-700 text-yellow-300' : 'text-white hover:text-yellow-300'}`}
               >
-                Dashboard
+                Pending Requests
               </Link>
               <Link
-                to="/driver/dashboard"
-                className="text-white hover:text-yellow-300 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+                to="/driver/history"
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${location.pathname === '/driver/history' ? 'bg-blue-700 text-yellow-300' : 'text-white hover:text-yellow-300'}`}
               >
-                My Trips
+                Trip History
               </Link>
               <Link
-                to="/driver/dashboard"
-                className="text-white hover:text-yellow-300 px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200"
+                to="/driver/earnings"
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${location.pathname === '/driver/earnings' ? 'bg-blue-700 text-yellow-300' : 'text-white hover:text-yellow-300'}`}
               >
-                Earnings
+                Total Earnings
               </Link>
             </nav>
           )}

@@ -20,7 +20,7 @@ const WaitingForDriver = () => {
           const trip = JSON.parse(message.body);
           if (trip.status === 'ACCEPTED') {
             client.deactivate();
-            navigate(`/confirm-booking/${tripId}`);
+            navigate(`/trips/${tripId}/confirm`);
           }
         });
       },

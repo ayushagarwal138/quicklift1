@@ -55,7 +55,7 @@ const SelectDriver = () => {
           const trip = JSON.parse(message.body);
           if (trip.status === 'ACCEPTED') {
             success('Your ride has been accepted by the driver!');
-            navigate(`/confirm-booking/${tripId}`);
+            navigate(`/trips/${tripId}/confirm`);
           } else if (trip.status === 'REJECTED') {
             setWaitingForResponse(false);
             setRejectedByDriver(true);

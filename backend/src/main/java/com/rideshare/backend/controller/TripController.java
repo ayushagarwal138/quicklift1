@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -75,6 +76,7 @@ public class TripController {
             trip.setDestinationLongitude(tripRequest.getDestinationLongitude());
             trip.setNotes(tripRequest.getNotes());
             trip.setFare(fare);
+            trip.setPaymentMethod(tripRequest.getPaymentMethod());
 
             Trip createdTrip = tripService.createTripAndAssignDriver(trip);
             return ResponseEntity.ok(createdTrip);
@@ -152,6 +154,29 @@ public class TripController {
             }
             Trip trip = tripService.createTripForDriver(tripRequest, user.get(), driverId);
             return ResponseEntity.ok(trip);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PatchMapping("/{id}/pay")
+    public ResponseEntity<?> payForTrip(@PathVariable Long id) {
+        try {
+            Trip paidTrip = tripService.payForTrip(id);
+            return ResponseEntity.ok(paidTrip);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PatchMapping("/{id}/payment-method")
+    public ResponseEntity<?> updatePaymentMethod(@PathVariable Long id, @RequestBody Map<String, String> body) {
+        try {
+            String paymentMethod = body.get("paymentMethod");
+            Trip trip = tripService.findById(id).orElseThrow(() -> new RuntimeException("Trip not found"));
+            trip.setPaymentMethod(paymentMethod);
+            Trip updatedTrip = tripService.save(trip);
+            return ResponseEntity.ok(updatedTrip);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

@@ -62,6 +62,10 @@ public class Trip {
     private BigDecimal rating;
     private String review;
 
+    private boolean paid = false;
+
+    private String paymentMethod;
+
     // Constructors
     public Trip() {
         this.requestedAt = LocalDateTime.now();
@@ -235,5 +239,21 @@ public class Trip {
 
     public void setReview(String review) {
         this.review = review;
+    }
+
+    public boolean isPaid() {
+        return paid;
+    }
+
+    public void setPaid(boolean paid) {
+        this.paid = paid;
+    }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
     }
 } 

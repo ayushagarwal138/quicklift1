@@ -229,4 +229,11 @@ public class TripService {
         messagingTemplate.convertAndSend("/topic/driver/" + selectedDriver.getId() + "/requests", savedTrip);
         return savedTrip;
     }
+
+    public Trip payForTrip(Long tripId) {
+        Trip trip = tripRepository.findById(tripId)
+            .orElseThrow(() -> new RuntimeException("Trip not found"));
+        trip.setPaid(true);
+        return tripRepository.save(trip);
+    }
 } 

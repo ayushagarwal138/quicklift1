@@ -194,6 +194,17 @@ const TripTracking = () => {
                                 </div>
                             </div>
                         </div>
+                        {trip.status === 'COMPLETED' && !trip.paid && trip.paymentMethod !== 'CASH' && (
+                          <button
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-semibold transition-colors duration-200 mt-4"
+                            onClick={() => navigate(`/payment/${trip.id}`)}
+                          >
+                            Pay Now
+                          </button>
+                        )}
+                        {trip.status === 'COMPLETED' && trip.paid && (
+                          <div className="text-green-600 font-semibold mt-4">Payment completed</div>
+                        )}
                     </div>
                      {trip.driver && (
                         <div className="bg-white rounded-lg shadow-lg p-6">

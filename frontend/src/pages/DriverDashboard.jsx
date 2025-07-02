@@ -47,7 +47,8 @@ const DriverDashboard = () => {
             }
             // Fetch pending trips (REQUESTED, assigned to this driver)
             const myTrips = await driverAPI.getMyTrips();
-            setPendingTrips(myTrips.filter(trip => trip.status === 'REQUESTED'));
+            const sortedPendingTrips = [...myTrips.filter(trip => trip.status === 'REQUESTED')].sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt));
+            setPendingTrips(sortedPendingTrips);
             setPastTrips(myTrips.filter(trip => trip.status === 'COMPLETED' || trip.status === 'CANCELLED')
                 .sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt)));
             // TODO: Fetch earnings and rating from backend
@@ -173,150 +174,129 @@ const DriverDashboard = () => {
                             <LogOut className="w-5 h-5" /> Logout
                         </button>
                     </aside>
-
                     {/* Main Content */}
                     <main className="flex-1 p-4 md:p-10 bg-gray-50 dark:bg-gray-900">
-                        {/* Dashboard Cards & Stats */}
+                        {/* Dashboard Summary Cards */}
                         {selectedSection === 'dashboard' && (
                             <>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 flex flex-col items-center border-t-4 border-green-400">
-                                    <DollarSign className="w-10 h-10 text-green-500 mb-3" />
-                                    <div className="text-3xl font-extrabold text-gray-900 dark:text-white">₹{earnings.toLocaleString()}</div>
-                                    <div className="text-gray-500 dark:text-gray-300 mt-2 text-lg">Earnings</div>
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 flex flex-col items-center border-t-4 border-green-400">
+                                        <DollarSign className="w-10 h-10 text-green-500 mb-3" />
+                                        <div className="text-3xl font-extrabold text-gray-900 dark:text-white">₹{earnings.toLocaleString()}</div>
+                                        <div className="text-gray-500 dark:text-gray-300 mt-2 text-lg">Earnings</div>
+                                    </div>
+                                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 flex flex-col items-center border-t-4 border-yellow-400">
+                                        <Star className="w-10 h-10 text-yellow-400 mb-3" />
+                                        <div className="text-3xl font-extrabold text-gray-900 dark:text-white">{rating.toFixed(2)}</div>
+                                        <div className="text-gray-500 dark:text-gray-300 mt-2 text-lg">Rating</div>
+                                    </div>
+                                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 flex flex-col items-center border-t-4 border-blue-400">
+                                        <UserCheck className="w-10 h-10 text-blue-500 mb-3" />
+                                        <div className="text-3xl font-extrabold text-gray-900 dark:text-white">{pendingTrips.length}</div>
+                                        <div className="text-gray-500 dark:text-gray-300 mt-2 text-lg">Pending Requests</div>
+                                    </div>
                                 </div>
-                                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 flex flex-col items-center border-t-4 border-yellow-400">
-                                    <Star className="w-10 h-10 text-yellow-400 mb-3" />
-                                    <div className="text-3xl font-extrabold text-gray-900 dark:text-white">{rating.toFixed(2)}</div>
-                                    <div className="text-gray-500 dark:text-gray-300 mt-2 text-lg">Rating</div>
-                                </div>
-                                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 flex flex-col items-center border-t-4 border-blue-400">
-                                    <UserCheck className="w-10 h-10 text-blue-500 mb-3" />
-                                    <div className="text-3xl font-extrabold text-gray-900 dark:text-white">{pendingTrips.length}</div>
-                                    <div className="text-gray-500 dark:text-gray-300 mt-2 text-lg">Pending Requests</div>
-                                </div>
-                            </div>
-
-                            {/* Pending Requests Section */}
-                            <section className="mb-8">
-                                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white"><Clock className="w-6 h-6 text-blue-500" /> Pending Ride Requests</h2>
-                                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
-                                    {pendingTrips.length === 0 ? (
-                                        <div className="text-gray-500 dark:text-gray-400">No pending ride requests.</div>
-                                    ) : (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            {pendingTrips.map(trip => (
-                                                <div key={trip.id} className="bg-blue-50 dark:bg-gray-900 rounded-lg p-6 shadow flex flex-col gap-2 border-l-4 border-blue-400">
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <MapPin className="w-5 h-5 text-blue-600" />
-                                                        <span className="font-semibold">Pickup:</span> {trip.pickupLocation}
-                                                    </div>
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <Navigation className="w-5 h-5 text-green-600" />
-                                                        <span className="font-semibold">Destination:</span> {trip.destination}
-                                                    </div>
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <Car className="w-5 h-5 text-gray-600" />
-                                                        <span className="font-semibold">Vehicle:</span> {trip.requestedVehicleType}
-                                                    </div>
-                                                    <div className="flex items-center gap-2 mb-2">
-                                                        <Clock className="w-5 h-5 text-yellow-600" />
-                                                        <span className="font-semibold">Requested At:</span> {new Date(trip.requestedAt).toLocaleString()}
-                                                    </div>
-                                                    <div className="flex gap-4 mt-4">
-                                                        <button
-                                                            onClick={() => handleAcceptTrip(trip.id)}
-                                                            className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-transform transform hover:scale-105 shadow"
-                                                        >
-                                                            <Check className="inline w-4 h-4 mr-1" /> Accept
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleRejectTrip(trip.id)}
-                                                            className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-transform transform hover:scale-105 shadow"
-                                                        >
-                                                            <X className="inline w-4 h-4 mr-1" /> Reject
-                                                        </button>
-                                                    </div>
+                                {/* Active Trip Preview in Dashboard */}
+                                {activeTrip && (
+                                    <section className="mb-8">
+                                        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white"><Activity className="w-6 h-6 text-green-500" /> Active Trip</h2>
+                                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 flex flex-col md:flex-row gap-8">
+                                            <div className="flex-1">
+                                                <div className="mb-4">
+                                                    <div className="font-semibold text-lg mb-2">Pickup: <span className="text-blue-600">{activeTrip.pickupLocation}</span></div>
+                                                    <div className="font-semibold text-lg mb-2">Destination: <span className="text-green-600">{activeTrip.destination}</span></div>
+                                                    <div className="text-gray-700 dark:text-gray-300 mb-2">Fare: ₹{activeTrip.fare ? activeTrip.fare.toFixed(2) : 'N/A'}</div>
+                                                    <div className="text-gray-700 dark:text-gray-300 mb-2">Status: <span className="font-semibold">{activeTrip.status}</span></div>
                                                 </div>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            </section>
-
-                            {/* Active Trip Section */}
-                            {activeTrip && (
-                                <section className="mb-8">
-                                    <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white"><Activity className="w-6 h-6 text-green-500" /> Active Trip</h2>
-                                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 flex flex-col md:flex-row gap-8">
-                                        <div className="flex-1">
-                                            <div className="mb-4">
-                                                <div className="font-semibold text-lg mb-2">Pickup: <span className="text-blue-600">{activeTrip.pickupLocation}</span></div>
-                                                <div className="font-semibold text-lg mb-2">Destination: <span className="text-green-600">{activeTrip.destination}</span></div>
-                                                <div className="text-gray-700 dark:text-gray-300 mb-2">Fare: ₹{activeTrip.fare ? activeTrip.fare.toFixed(2) : 'N/A'}</div>
-                                                <div className="text-gray-700 dark:text-gray-300 mb-2">Status: <span className="font-semibold">{activeTrip.status}</span></div>
+                                                <div className="flex gap-4 mt-4">
+                                                    {activeTrip.status === 'ACCEPTED' && (
+                                                        <button 
+                                                            onClick={() => handleUpdateTripStatus(activeTrip.id, 'start')}
+                                                            className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105 shadow"
+                                                        >
+                                                            Start Trip
+                                                        </button>
+                                                    )}
+                                                    {activeTrip.status === 'STARTED' && (
+                                                        <button 
+                                                            onClick={() => handleUpdateTripStatus(activeTrip.id, 'complete')}
+                                                            className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105 shadow"
+                                                        >
+                                                            Complete Trip
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <div className="flex gap-4 mt-4">
-                                                {activeTrip.status === 'ACCEPTED' && (
-                                                    <button 
-                                                        onClick={() => handleUpdateTripStatus(activeTrip.id, 'start')}
-                                                        className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105 shadow"
-                                                    >
-                                                        Start Trip
-                                                    </button>
-                                                )}
-                                                {activeTrip.status === 'STARTED' && (
-                                                    <button 
-                                                        onClick={() => handleUpdateTripStatus(activeTrip.id, 'complete')}
-                                                        className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105 shadow"
-                                                    >
-                                                        Complete Trip
-                                                    </button>
-                                                )}
+                                            <div className="flex-1">
+                                                <MapContainer center={[activeTrip.pickupLatitude, activeTrip.pickupLongitude]} zoom={13} style={{ height: '250px', width: '100%' }}>
+                                                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                                                    <Marker position={[activeTrip.pickupLatitude, activeTrip.pickupLongitude]} icon={driverIcon}>
+                                                        <Popup>Pickup: {activeTrip.pickupLocation}</Popup>
+                                                    </Marker>
+                                                    <Marker position={[activeTrip.destinationLatitude, activeTrip.destinationLongitude]}>
+                                                        <Popup>Destination: {activeTrip.destination}</Popup>
+                                                    </Marker>
+                                                    <Polyline positions={[[activeTrip.pickupLatitude, activeTrip.pickupLongitude], [activeTrip.destinationLatitude, activeTrip.destinationLongitude]]} color="blue" />
+                                                </MapContainer>
                                             </div>
                                         </div>
-                                        <div className="flex-1">
-                                            <MapContainer center={[activeTrip.pickupLatitude, activeTrip.pickupLongitude]} zoom={13} style={{ height: '250px', width: '100%' }}>
-                                                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                                                <Marker position={[activeTrip.pickupLatitude, activeTrip.pickupLongitude]} icon={driverIcon}>
-                                                    <Popup>Pickup: {activeTrip.pickupLocation}</Popup>
-                                                </Marker>
-                                                <Marker position={[activeTrip.destinationLatitude, activeTrip.destinationLongitude]}>
-                                                    <Popup>Destination: {activeTrip.destination}</Popup>
-                                                </Marker>
-                                                <Polyline positions={[[activeTrip.pickupLatitude, activeTrip.pickupLongitude], [activeTrip.destinationLatitude, activeTrip.destinationLongitude]]} color="blue" />
-                                            </MapContainer>
+                                    </section>
+                                )}
+                            </>
+                        )}
+                        {selectedSection === 'activeTrip' && activeTrip && (
+                            <section className="mb-8">
+                                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white"><Activity className="w-6 h-6 text-green-500" /> Active Trip</h2>
+                                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 flex flex-col md:flex-row gap-8">
+                                    <div className="flex-1">
+                                        <div className="mb-4">
+                                            <div className="font-semibold text-lg mb-2">Pickup: <span className="text-blue-600">{activeTrip.pickupLocation}</span></div>
+                                            <div className="font-semibold text-lg mb-2">Destination: <span className="text-green-600">{activeTrip.destination}</span></div>
+                                            <div className="text-gray-700 dark:text-gray-300 mb-2">Fare: ₹{activeTrip.fare ? activeTrip.fare.toFixed(2) : 'N/A'}</div>
+                                            <div className="text-gray-700 dark:text-gray-300 mb-2">Status: <span className="font-semibold">{activeTrip.status}</span></div>
+                                        </div>
+                                        <div className="flex gap-4 mt-4">
+                                            {activeTrip.status === 'ACCEPTED' && (
+                                                <button 
+                                                    onClick={() => handleUpdateTripStatus(activeTrip.id, 'start')}
+                                                    className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105 shadow"
+                                                >
+                                                    Start Trip
+                                                </button>
+                                            )}
+                                            {activeTrip.status === 'STARTED' && (
+                                                <button 
+                                                    onClick={() => handleUpdateTripStatus(activeTrip.id, 'complete')}
+                                                    className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105 shadow"
+                                                >
+                                                    Complete Trip
+                                                </button>
+                                            )}
                                         </div>
                                     </div>
-                                </section>
-                            )}
-
-                            {/* Trip History Section */}
-                            <section>
-                                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white"><History className="w-6 h-6 text-gray-500" /> Trip History</h2>
-                                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8">
-                                    {pastTrips.length === 0 ? (
-                                        <div className="text-gray-500 dark:text-gray-400">No trips yet.</div>
-                                    ) : (
-                                        <div className="space-y-4">
-                                            {pastTrips.map(trip => (
-                                                <div key={trip.id} className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b pb-4 last:border-b-0 last:pb-0">
-                                                    <div>
-                                                        <div className="font-semibold">From: {trip.pickupLocation}</div>
-                                                        <div>To: {trip.destination}</div>
-                                                        <div>Fare: ₹{trip.fare ? trip.fare.toFixed(2) : 'N/A'}</div>
-                                                        <div className="text-xs text-gray-500">{new Date(trip.requestedAt).toLocaleString()}</div>
-                                                    </div>
-                                                    <div className="flex gap-2 mt-2 md:mt-0">
-                                                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${trip.status === 'COMPLETED' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{trip.status}</span>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                                    <div className="flex-1">
+                                        <MapContainer center={[activeTrip.pickupLatitude, activeTrip.pickupLongitude]} zoom={13} style={{ height: '250px', width: '100%' }}>
+                                            <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                                            <Marker position={[activeTrip.pickupLatitude, activeTrip.pickupLongitude]} icon={driverIcon}>
+                                                <Popup>Pickup: {activeTrip.pickupLocation}</Popup>
+                                            </Marker>
+                                            <Marker position={[activeTrip.destinationLatitude, activeTrip.destinationLongitude]}>
+                                                <Popup>Destination: {activeTrip.destination}</Popup>
+                                            </Marker>
+                                            <Polyline positions={[[activeTrip.pickupLatitude, activeTrip.pickupLongitude], [activeTrip.destinationLatitude, activeTrip.destinationLongitude]]} color="blue" />
+                                        </MapContainer>
+                                    </div>
                                 </div>
                             </section>
-                            </>
+                        )}
+                        {selectedSection === 'activeTrip' && !activeTrip && (
+                            <div className="text-center text-gray-500 dark:text-gray-400 text-lg py-10">No active trip at the moment.</div>
+                        )}
+                        {selectedSection === 'history' && (
+                            <section>{/* ...trip history details... */}</section>
+                        )}
+                        {selectedSection === 'profile' && (
+                            <section>{/* ...profile details... */}</section>
                         )}
                     </main>
                 </div>

@@ -27,6 +27,8 @@ public class TripRequest {
     
     private BigDecimal tolls;
     
+    private String paymentMethod;
+    
     // Constructors
     public TripRequest() {}
     
@@ -63,4 +65,11 @@ public class TripRequest {
 
     public BigDecimal getTolls() { return tolls; }
     public void setTolls(BigDecimal tolls) { this.tolls = tolls; }
+
+    public String getPaymentMethod() {
+        return paymentMethod;
+    }
+    public void setPaymentMethod(String paymentMethod) {
+        this.paymentMethod = paymentMethod;
+    }
 } 

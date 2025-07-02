@@ -19,6 +19,10 @@ import ConfirmBooking from './pages/ConfirmBooking';
 import SelectDriver from './pages/SelectDriver';
 import UserDashboard from './pages/UserDashboard';
 import WaitingForDriver from './pages/WaitingForDriver';
+import Payment from './pages/Payment';
+import DriverPendingRequests from './pages/DriverPendingRequests';
+import DriverHistory from './pages/DriverHistory';
+import DriverEarnings from './pages/DriverEarnings';
 
 function App() {
   return (
@@ -119,6 +123,17 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
+                <Route
+                  path="/payment/:tripId"
+                  element={
+                    <ProtectedRoute>
+                      <Payment />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route path="/driver/pending-requests" element={<DriverPendingRequests />} />
+                <Route path="/driver/history" element={<DriverHistory />} />
+                <Route path="/driver/earnings" element={<DriverEarnings />} />
               </Routes>
             </main>
           </div>
