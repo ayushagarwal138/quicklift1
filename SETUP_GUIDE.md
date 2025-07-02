@@ -1,287 +1,169 @@
-# 🚀 Taxi Booking System - Complete Setup Guide
+# 🚖 Rideshare Booking System – Professional Setup Guide
 
-This guide will help you set up and run the complete taxi booking system with both backend and frontend.
+Welcome! This guide will help you set up, run, and develop the Rideshare Booking System, including both backend (Spring Boot) and frontend (React).
+
+---
 
 ## 📁 Project Structure
 
 ```
-taxi-booking-system/
-├── backend/                 # Spring Boot Backend
-│   ├── src/                # Java source code
-│   ├── pom.xml             # Maven dependencies
-│   └── README.md           # Backend documentation
-├── frontend/               # React Frontend
-│   ├── src/                # React source code
-│   ├── package.json        # Node.js dependencies
-│   └── README.md           # Frontend documentation
-├── README.md               # Main project documentation
-└── SETUP_GUIDE.md          # This setup guide
+rideshare-backend-springboot/
+├── backend/      # Spring Boot backend (Java)
+├── frontend/     # React frontend (JS/TS)
+├── README.md     # Project overview
+├── SETUP_GUIDE.md# This setup guide
 ```
+
+---
 
 ## 🛠️ Prerequisites
 
-### Backend Requirements
-- **Java 21** (or higher)
-- **Maven** (included with the project)
+- **Java 21+**
+- **Node.js 16+** and **npm**
+- **Maven** (included via wrapper)
 
-### Frontend Requirements
-- **Node.js 16+** (or higher)
-- **npm** (comes with Node.js)
-
-### Verify Installation
+**Verify your tools:**
 ```bash
-# Check Java version
 java -version
-
-# Check Node.js version
 node --version
-
-# Check npm version
 npm --version
 ```
 
-## 🚀 Quick Setup
+---
 
-### Step 1: Clone and Navigate
+## 🚀 Quick Start
+
+### 1. Clone the Repository
 ```bash
-# Navigate to the project directory
-cd taxi-booking-system
+git clone <your-repo-url>
+cd rideshare-backend-springboot
 ```
 
-### Step 2: Start the Backend
+### 2. Start the Backend
 ```bash
-# Navigate to backend directory
 cd backend
-
-# Start Spring Boot application
 ./mvnw spring-boot:run
 ```
+- Backend runs at: [http://localhost:8080](http://localhost:8080)
 
-**Backend will be available at:** `http://localhost:8080`
-
-### Step 3: Start the Frontend (New Terminal)
+### 3. Start the Frontend (in a new terminal)
 ```bash
-# Navigate to frontend directory
 cd frontend
-
-# Install dependencies (first time only)
 npm install
-
-# Start development server
 npm run dev
 ```
+- Frontend runs at: [http://localhost:5173](http://localhost:5173)
 
-**Frontend will be available at:** `http://localhost:5173`
+---
+
+## 👤 Default Admin Login
+
+- **Username:** `admin`
+- **Password:** `password`
+
+---
 
 ## 🧪 Testing the Application
 
-### 1. Access the Application
-- Open your browser and go to: `http://localhost:5173`
-- You should see the TaxiBook landing page
+1. Open [http://localhost:5173](http://localhost:5173) in your browser.
+2. Register as a user, driver, or login as admin.
+3. Book rides, view trip history, and explore dashboards.
 
-### 2. Register a New Account
-- Click "Get Started" or "Register"
-- Fill in your details:
-  - First Name: `John`
-  - Last Name: `Doe`
-  - Email: `john@example.com`
-  - Phone: `+1234567890`
-  - Password: `password123`
-  - Role: `Passenger`
-- Click "Create account"
+---
 
-### 3. Login
-- Use your registered email and password
-- You should be redirected to the home page
+## 🔧 Development Commands
 
-### 4. Book a Ride
-- Click "Book Ride" in the navigation
-- Fill in the trip details:
-  - Pickup Location: `123 Main Street`
-  - Destination: `456 Oak Avenue`
-  - Vehicle Type: Select any vehicle
-  - Notes: `Please arrive on time`
-- Click "Book Ride Now"
-
-### 5. View Trip History
-- Click "Trip History" in the navigation
-- You should see your booked trip
-
-## 🔧 Development Workflow
-
-### Backend Development
+### Backend
 ```bash
 cd backend
-
-# Run with hot reload
-./mvnw spring-boot:run
-
-# Build the project
-./mvnw clean package
-
-# Run tests
-./mvnw test
+./mvnw spring-boot:run      # Start with hot reload
+./mvnw clean package        # Build JAR
+./mvnw test                 # Run tests
 ```
 
-### Frontend Development
+### Frontend
 ```bash
 cd frontend
-
-# Start development server
-npm run dev
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run preview
+npm run dev                 # Start dev server
+npm run build               # Build for production
+npm run preview             # Preview production build
 ```
 
-## 📊 API Testing
+---
 
-### Using H2 Console
-1. Go to: `http://localhost:8080/h2-console`
-2. Use these settings:
-   - JDBC URL: `jdbc:h2:mem:testdb`
-   - Username: `sa`
-   - Password: (leave empty)
-3. Click "Connect"
+## 🛠️ Troubleshooting
 
-### Using cURL
-```bash
-# Register a user
-curl -X POST http://localhost:8080/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "test@example.com",
-    "password": "password123",
-    "firstName": "Test",
-    "lastName": "User",
-    "phoneNumber": "+1234567890",
-    "role": "PASSENGER"
-  }'
+### Common Issues
 
-# Login
-curl -X POST http://localhost:8080/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "test@example.com",
-    "password": "password123"
-  }'
-```
+- **Port in use:**  
+  Find and kill the process:
+  ```bash
+  lsof -i :8080   # or :5173
+  kill -9 <PID>
+  ```
 
-## 🔍 Troubleshooting
+- **Java/Node version:**  
+  Ensure you have Java 21+ and Node.js 16+.
 
-### Backend Issues
+- **Node modules issues:**  
+  ```bash
+  rm -rf node_modules package-lock.json
+  npm install
+  ```
 
-**Port 8080 already in use:**
-```bash
-# Find process using port 8080
-lsof -i :8080
+- **CORS errors:**  
+  Backend CORS is configured for `http://localhost:5173` and `http://localhost:3000`.
 
-# Kill the process
-kill -9 <PID>
-```
+- **Database:**  
+  H2 is in-memory; data resets on restart.  
+  Access H2 console at [http://localhost:8080/h2-console](http://localhost:8080/h2-console).
 
-**Java version issues:**
-```bash
-# Check Java version
-java -version
+---
 
-# Install Java 21 if needed
-# macOS: brew install openjdk@21
-# Ubuntu: sudo apt install openjdk-21-jdk
-```
+## 📊 API & Database
 
-### Frontend Issues
+- **API Docs:** See backend/README.md for endpoints.
+- **H2 Console:**  
+  - URL: `http://localhost:8080/h2-console`
+  - JDBC URL: `jdbc:h2:mem:testdb`
+  - Username: `sa` (no password)
 
-**Port 5173 already in use:**
-```bash
-# Find process using port 5173
-lsof -i :5173
-
-# Kill the process
-kill -9 <PID>
-```
-
-**Node modules issues:**
-```bash
-# Clear npm cache
-npm cache clean --force
-
-# Delete node_modules and reinstall
-rm -rf node_modules package-lock.json
-npm install
-```
-
-**Build issues:**
-```bash
-# Clear build cache
-npm run build -- --force
-```
+---
 
 ## 🚀 Production Deployment
 
-### Backend Deployment
-1. **Build the JAR:**
-   ```bash
-   cd backend
-   ./mvnw clean package
-   ```
+### Backend
+```bash
+cd backend
+./mvnw clean package
+java -jar target/rideshare-backend-0.0.1-SNAPSHOT.jar
+```
 
-2. **Run the JAR:**
-   ```bash
-   java -jar target/rideshare-backend-0.0.1-SNAPSHOT.jar
-   ```
+### Frontend
+```bash
+cd frontend
+npm run build
+# Deploy the 'dist' folder to your hosting provider
+```
 
-### Frontend Deployment
-1. **Build the application:**
-   ```bash
-   cd frontend
-   npm run build
-   ```
-
-2. **Deploy the `dist` folder** to your hosting service
+---
 
 ## 📱 Features Overview
 
-### ✅ Implemented Features
-- **User Authentication**: Register, login, JWT tokens
-- **Ride Booking**: Multiple vehicle types, fare estimation
-- **Trip Management**: Status tracking, history
-- **Responsive Design**: Works on all devices
-- **Real-time Updates**: Trip status changes
-- **Security**: Protected routes, form validation
+- User, Driver, and Admin roles
+- Authentication (JWT)
+- Ride booking, trip management, fare estimation
+- Real-time updates (WebSocket)
+- Responsive design
+- Admin dashboard
 
-### 🚧 Future Enhancements
-- **Real-time Tracking**: Live driver location
-- **Payment Integration**: Stripe/PayPal
-- **Push Notifications**: Trip updates
-- **Driver App**: Separate driver interface
-- **Admin Dashboard**: Trip management
-- **Rating System**: Driver/passenger ratings
+---
 
 ## 📞 Support
 
-### Common Issues
-1. **CORS errors**: Backend CORS is configured for `http://localhost:5173`
-2. **JWT token issues**: Check token expiration and format
-3. **Database issues**: H2 database is in-memory, data resets on restart
-
-### Getting Help
-- Check the individual README files in `backend/` and `frontend/`
-- Review the API documentation
-- Check browser console for frontend errors
-- Check backend logs for server errors
-
-## 🎉 Success!
-
-Once both applications are running:
-- **Frontend**: `http://localhost:5173`
-- **Backend API**: `http://localhost:8080`
-- **H2 Database**: `http://localhost:8080/h2-console`
-
-You now have a fully functional taxi booking system! 🚗✨
+- Check backend/frontend README files
+- Review API docs
+- Check browser console and backend logs for errors
 
 ---
 
