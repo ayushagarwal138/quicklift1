@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { adminAPI } from '../api/admin';
 import { useToast } from '../context/ToastContext';
 import { Users, Car, Map, CheckCircle, TrendingUp, UserCheck, Star } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const StatCard = ({ title, value, icon, color }) => (
   <div className={`bg-white p-6 rounded-lg shadow-md border-t-4 ${color} flex items-center gap-4`}>
@@ -45,6 +47,8 @@ const Table = ({ title, columns, data }) => (
 
 const AdminDashboard = () => {
   const { error } = useToast();
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [trips, setTrips] = useState([]);
@@ -91,7 +95,15 @@ const AdminDashboard = () => {
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8 text-gray-800">Admin Dashboard</h1>
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-800">Admin Dashboard</h1>
+          <button
+            onClick={() => { logout(); navigate('/login'); }}
+            className="bg-red-500 hover:bg-red-600 text-white font-semibold px-4 py-2 rounded shadow"
+          >
+            Logout
+          </button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
           <StatCard title="Total Users" value={totalUsers} icon={<Users className="w-6 h-6 text-blue-500" />} color="border-blue-400" />
           <StatCard title="Total Drivers" value={totalDrivers} icon={<Car className="w-6 h-6 text-green-500" />} color="border-green-400" />
