@@ -4,6 +4,7 @@ import { useToast } from '../context/ToastContext';
 import { Users, Car, Map, CheckCircle, TrendingUp, UserCheck, Star, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 const StatCard = ({ title, value, icon, color }) => (
   <div className={`bg-white p-6 rounded-lg shadow-md border-t-4 ${color} flex items-center gap-4`}>
@@ -142,6 +143,15 @@ const AdminDashboard = () => {
     if (successCount > 0) success(`Deleted ${successCount} driver(s)`);
   };
 
+  // Mock chart data (last 6 months)
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun"];
+  const chartData = months.map((month, i) => ({
+    month,
+    users: Math.round(totalUsers * (0.5 + 0.1 * i)),
+    drivers: Math.round(totalDrivers * (0.5 + 0.12 * i)),
+    revenue: Math.round(totalRevenue * (0.5 + 0.15 * i)),
+  }));
+
   if (isLoading) {
     return <div className="text-center py-10">Loading Admin Dashboard...</div>;
   }
@@ -157,6 +167,22 @@ const AdminDashboard = () => {
           >
             Logout
           </button>
+        </div>
+        {/* Chart Section */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-10">
+          <h2 className="text-xl font-bold mb-4">Platform Trends (Last 6 Months)</h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" />
+              <YAxis />
+              <Tooltip />
+              <Legend />
+              <Line type="monotone" dataKey="users" stroke="#2563eb" name="Users" strokeWidth={2} />
+              <Line type="monotone" dataKey="drivers" stroke="#22c55e" name="Drivers" strokeWidth={2} />
+              <Line type="monotone" dataKey="revenue" stroke="#f59e42" name="Revenue" strokeWidth={2} />
+            </LineChart>
+          </ResponsiveContainer>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
           <StatCard title="Total Users" value={totalUsers} icon={<Users className="w-6 h-6 text-blue-500" />} color="border-blue-400" />
