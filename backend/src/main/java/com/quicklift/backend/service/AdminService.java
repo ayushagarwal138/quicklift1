@@ -34,4 +34,14 @@ public class AdminService {
     public List<Trip> findAllTrips() {
         return tripRepository.findAll();
     }
+
+    public void deleteDriver(Long id) {
+        Driver driver = driverRepository.findById(id).orElseThrow(() -> new RuntimeException("Driver not found"));
+        // Optionally delete the associated user as well
+        User user = driver.getUser();
+        driverRepository.deleteById(id);
+        if (user != null) {
+            userRepository.deleteById(user.getId());
+        }
+    }
 } 

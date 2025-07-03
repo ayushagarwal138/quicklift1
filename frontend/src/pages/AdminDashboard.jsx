@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { adminAPI } from '../api/admin';
 import { useToast } from '../context/ToastContext';
-import { Users, Car, Map, CheckCircle, TrendingUp, UserCheck, Star } from 'lucide-react';
+import { Users, Car, Map, CheckCircle, TrendingUp, UserCheck, Star, Trash2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -46,13 +46,15 @@ const Table = ({ title, columns, data }) => (
 );
 
 const AdminDashboard = () => {
-  const { error } = useToast();
+  const { error, success } = useToast();
   const { logout } = useAuth();
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [trips, setTrips] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedUserIds, setSelectedUserIds] = useState([]);
+  const [selectedDriverIds, setSelectedDriverIds] = useState([]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -88,6 +90,58 @@ const AdminDashboard = () => {
   const recentDrivers = drivers.slice(-5).reverse();
   const recentTrips = trips.slice(-5).reverse();
 
+  // User selection logic
+  const toggleUser = (id) => {
+    setSelectedUserIds((prev) => prev.includes(id) ? prev.filter(uid => uid !== id) : [...prev, id]);
+  };
+  const selectAllUsers = () => {
+    if (selectedUserIds.length === users.length) setSelectedUserIds([]);
+    else setSelectedUserIds(users.map(u => u.id));
+  };
+
+  // Driver selection logic
+  const toggleDriver = (id) => {
+    setSelectedDriverIds((prev) => prev.includes(id) ? prev.filter(did => did !== id) : [...prev, id]);
+  };
+  const selectAllDrivers = () => {
+    if (selectedDriverIds.length === drivers.length) setSelectedDriverIds([]);
+    else setSelectedDriverIds(drivers.map(d => d.id));
+  };
+
+  // Bulk delete users
+  const handleBulkDeleteUsers = async () => {
+    if (selectedUserIds.length === 0) return error('No users selected.');
+    if (!window.confirm('Delete selected users permanently?')) return;
+    let successCount = 0;
+    for (const id of selectedUserIds) {
+      try {
+        await adminAPI.deleteUser(id);
+        successCount++;
+      } catch {}
+    }
+    setUsers(users.filter(u => !selectedUserIds.includes(u.id)));
+    setSelectedUserIds([]);
+    if (successCount > 0) {
+      success(`Deleted ${successCount} user(s)`);
+    }
+  };
+
+  // Bulk delete drivers
+  const handleBulkDeleteDrivers = async () => {
+    if (selectedDriverIds.length === 0) return error('No drivers selected.');
+    if (!window.confirm('Delete selected drivers permanently?')) return;
+    let successCount = 0;
+    for (const id of selectedDriverIds) {
+      try {
+        await adminAPI.deleteDriver(id);
+        successCount++;
+      } catch {}
+    }
+    setDrivers(drivers.filter(d => !selectedDriverIds.includes(d.id)));
+    setSelectedDriverIds([]);
+    if (successCount > 0) success(`Deleted ${successCount} driver(s)`);
+  };
+
   if (isLoading) {
     return <div className="text-center py-10">Loading Admin Dashboard...</div>;
   }
@@ -115,22 +169,37 @@ const AdminDashboard = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-1">
+            <div className="flex items-center mb-2">
+              <button onClick={handleBulkDeleteUsers} className="bg-red-500 hover:bg-red-600 text-white font-semibold px-3 py-1 rounded mr-2 disabled:opacity-50" disabled={selectedUserIds.length === 0}>Delete Selected</button>
+              <span className="text-sm text-gray-500">{selectedUserIds.length} selected</span>
+            </div>
             <Table
-              title="Recent Users"
-              columns={["Username", "Email", "Role", "Joined"]}
-              data={recentUsers.map(u => [u.username, u.email, u.role, u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—'])}
+              title="All Users"
+              columns={[<input type="checkbox" checked={selectedUserIds.length === users.length && users.length > 0} onChange={selectAllUsers} />, "Username", "Email", "Role", "Joined"]}
+              data={users.map(u => [
+                <input type="checkbox" checked={selectedUserIds.includes(u.id)} onChange={() => toggleUser(u.id)} />,
+                u.username,
+                u.email,
+                u.role,
+                u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '\u2014',
+              ])}
             />
           </div>
           <div className="lg:col-span-1">
+            <div className="flex items-center mb-2">
+              <button onClick={handleBulkDeleteDrivers} className="bg-red-500 hover:bg-red-600 text-white font-semibold px-3 py-1 rounded mr-2 disabled:opacity-50" disabled={selectedDriverIds.length === 0}>Delete Selected</button>
+              <span className="text-sm text-gray-500">{selectedDriverIds.length} selected</span>
+            </div>
             <Table
-              title="Recent Drivers"
-              columns={["Name", "Vehicle", "Status", "Rating", "Rides"]}
-              data={recentDrivers.map(d => [
+              title="All Drivers"
+              columns={[<input type="checkbox" checked={selectedDriverIds.length === drivers.length && drivers.length > 0} onChange={selectAllDrivers} />, "Name", "Vehicle", "Status", "Rating", "Rides"]}
+              data={drivers.map(d => [
+                <input type="checkbox" checked={selectedDriverIds.includes(d.id)} onChange={() => toggleDriver(d.id)} />,
                 d.user?.firstName + ' ' + d.user?.lastName,
                 `${d.vehicleType} (${d.vehicleModel})`,
                 d.status,
                 d.rating?.toFixed(2),
-                d.totalRides
+                d.totalRides,
               ])}
             />
           </div>
