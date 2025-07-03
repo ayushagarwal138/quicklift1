@@ -8,11 +8,11 @@
 		<version>3.4.4</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>com.rideshare</groupId>
-	<artifactId>backend</artifactId>
+	<groupId>com.quicklift</groupId>
+	<artifactId>quicklift-backend</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>rideshare-backend</name>
-	<description>A backend system for ride sharing platform with features like real-time driver matching, trip management, and user roles.</description>
+	<name>quicklift-backend</name>
+	<description>A backend system for QuickLift platform with features like real-time driver matching, trip management, and user roles.</description>
 	<url/>
 	<licenses>
 		<license/>

@@ -1,13 +1,13 @@
-# 🚖 Rideshare Booking System – Professional Setup Guide
+# 🚖 QuickLift Booking System – Professional Setup Guide
 
-Welcome! This guide will help you set up, run, and develop the Rideshare Booking System, including both backend (Spring Boot) and frontend (React).
+Welcome! This guide will help you set up, run, and develop the QuickLift Booking System, including both backend (Spring Boot) and frontend (React).
 
 ---
 
 ## 📁 Project Structure
 
 ```
-rideshare-backend-springboot/
+quicklift/
 ├── backend/      # Spring Boot backend (Java)
 ├── frontend/     # React frontend (JS/TS)
 ├── README.md     # Project overview
@@ -19,7 +19,7 @@ rideshare-backend-springboot/
 ## 🛠️ Prerequisites
 
 - **Java 21+**
-- **Node.js 16+** and **npm**
+- **Node.js 18+** and **npm**
 - **Maven** (included via wrapper)
 
 **Verify your tools:**
@@ -36,7 +36,7 @@ npm --version
 ### 1. Clone the Repository
 ```bash
 git clone <your-repo-url>
-cd rideshare-backend-springboot
+cd quicklift
 ```
 
 ### 2. Start the Backend
@@ -103,7 +103,7 @@ npm run preview             # Preview production build
   ```
 
 - **Java/Node version:**  
-  Ensure you have Java 21+ and Node.js 16+.
+  Ensure you have Java 21+ and Node.js 18+.
 
 - **Node modules issues:**  
   ```bash
@@ -115,18 +115,16 @@ npm run preview             # Preview production build
   Backend CORS is configured for `http://localhost:5173` and `http://localhost:3000`.
 
 - **Database:**  
-  H2 is in-memory; data resets on restart.  
-  Access H2 console at [http://localhost:8080/h2-console](http://localhost:8080/h2-console).
+  MySQL is used by default. Update `backend/src/main/resources/application.properties` for your setup.
 
 ---
 
 ## 📊 API & Database
 
 - **API Docs:** See backend/README.md for endpoints.
-- **H2 Console:**  
-  - URL: `http://localhost:8080/h2-console`
-  - JDBC URL: `jdbc:h2:mem:testdb`
-  - Username: `sa` (no password)
+- **Database:**
+  - MySQL (default)
+  - Update connection details in `backend/src/main/resources/application.properties`
 
 ---
 
@@ -136,7 +134,7 @@ npm run preview             # Preview production build
 ```bash
 cd backend
 ./mvnw clean package
-java -jar target/rideshare-backend-0.0.1-SNAPSHOT.jar
+java -jar target/quicklift-backend-0.0.1-SNAPSHOT.jar
 ```
 
 ### Frontend
@@ -167,4 +165,4 @@ npm run build
 
 ---
 
-**Happy Coding! 🚀** 
+**Happy Coding with QuickLift! 🚀** 
