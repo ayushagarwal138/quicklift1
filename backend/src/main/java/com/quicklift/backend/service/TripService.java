@@ -185,10 +185,15 @@ public class TripService {
     public Trip rejectTrip(Long tripId, Long driverId) {
         Trip trip = tripRepository.findById(tripId)
             .orElseThrow(() -> new RuntimeException("Trip not found"));
-        // Optionally, keep a list of rejected drivers (not implemented here)
-        // For now, just log or handle as needed. You may want to add a field to Trip for rejectedDrivers.
-        // This implementation does nothing except return the trip.
-        // You can extend this to mark the trip as rejected by this driver, or remove from their available list.
+
+        // Only allow rejection if the trip is still REQUESTED and assigned to this driver
+        if (trip.getStatus() == TripStatus.REQUESTED && trip.getDriver() != null && trip.getDriver().getId().equals(driverId)) {
+            // Unassign the driver
+            trip.setDriver(null);
+            tripRepository.save(trip);
+            // Optionally: broadcast update
+            messagingTemplate.convertAndSend("/topic/trip/" + tripId + "/status", trip);
+        }
         return trip;
     }
 

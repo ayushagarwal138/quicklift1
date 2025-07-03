@@ -35,6 +35,7 @@ const DriverDashboard = () => {
     const [earnings, setEarnings] = useState(12345);
     const [rating, setRating] = useState(4.8);
     const [selectedSection, setSelectedSection] = useState('dashboard');
+    const [actionLoading, setActionLoading] = useState(false);
 
     const fetchAllData = async () => {
         setIsLoading(true);
@@ -94,23 +95,29 @@ const DriverDashboard = () => {
 
     const handleAcceptTrip = async (tripId) => {
         info('Accepting trip...');
+        setActionLoading(true);
         try {
             await driverAPI.acceptTrip(tripId);
             success('Trip accepted!');
             await fetchAllData();
         } catch (err) {
             error(err.response?.data?.message || 'Failed to accept trip.');
+        } finally {
+            setActionLoading(false);
         }
     };
 
     const handleRejectTrip = async (tripId) => {
         info('Rejecting trip...');
+        setActionLoading(true);
         try {
             await driverAPI.rejectTrip(tripId);
             success('Trip rejected!');
             await fetchAllData();
         } catch (err) {
             error(err.response?.data?.message || 'Failed to reject trip.');
+        } finally {
+            setActionLoading(false);
         }
     };
 
@@ -239,6 +246,36 @@ const DriverDashboard = () => {
                                                     </Marker>
                                                     <Polyline positions={[[activeTrip.pickupLatitude, activeTrip.pickupLongitude], [activeTrip.destinationLatitude, activeTrip.destinationLongitude]]} color="blue" />
                                                 </MapContainer>
+                                            </div>
+                                        </div>
+                                    </section>
+                                )}
+                                {/* Show only the latest pending request */}
+                                {pendingTrips.length > 0 && (
+                                    <section className="mb-8">
+                                        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
+                                            <Clock className="w-6 h-6 text-yellow-500" /> Latest Pending Request
+                                        </h2>
+                                        {/* Render the latest pending trip (first in sorted array) */}
+                                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 flex flex-col gap-4">
+                                            <div className="font-semibold text-lg mb-2">Pickup: <span className="text-blue-600">{pendingTrips[0].pickupLocation}</span></div>
+                                            <div className="font-semibold text-lg mb-2">Destination: <span className="text-green-600">{pendingTrips[0].destination}</span></div>
+                                            <div className="text-gray-700 dark:text-gray-300 mb-2">Fare: ₹{pendingTrips[0].fare ? pendingTrips[0].fare.toFixed(2) : 'N/A'}</div>
+                                            <div className="flex gap-4 mt-4">
+                                                <button
+                                                    onClick={() => handleAcceptTrip(pendingTrips[0].id)}
+                                                    className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105 shadow disabled:opacity-60 disabled:cursor-not-allowed"
+                                                    disabled={actionLoading}
+                                                >
+                                                    {actionLoading ? 'Processing...' : 'Accept'}
+                                                </button>
+                                                <button
+                                                    onClick={() => handleRejectTrip(pendingTrips[0].id)}
+                                                    className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105 shadow disabled:opacity-60 disabled:cursor-not-allowed"
+                                                    disabled={actionLoading}
+                                                >
+                                                    {actionLoading ? 'Processing...' : 'Reject'}
+                                                </button>
                                             </div>
                                         </div>
                                     </section>
