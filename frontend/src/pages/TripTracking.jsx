@@ -99,6 +99,12 @@ const TripTracking = () => {
     };
   }, [tripId, error, info]);
   
+  useEffect(() => {
+    if (trip && trip.status === 'COMPLETED' && !trip.paid) {
+      navigate(`/payment/${trip.id}`);
+    }
+  }, [trip, navigate]);
+  
   if (isLoading) return <div className="text-center py-10">Loading Trip Details...</div>;
   if (!trip) return <div className="text-center py-10">Trip not found.</div>;
   
