@@ -99,7 +99,7 @@ const UserHeader = () => {
                       {/* User Info */}
                       <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-700">
                         <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.username || user?.name || 'User'}</p>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">{user?.email || 'user@example.com'}</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{user?.email}</p>
                       </div>
 
                       {/* Menu Items */}

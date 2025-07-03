@@ -59,6 +59,7 @@ export const AuthProvider = ({ children }) => {
       const userData = {
         username: decodedToken.sub,
         roles,
+        email: response.email,
       };
 
       localStorage.setItem('token', token);
@@ -92,6 +93,7 @@ export const AuthProvider = ({ children }) => {
       const newUserData = {
         username: decodedToken.sub,
         roles,
+        email: response.email,
       };
 
       localStorage.setItem('token', token);
