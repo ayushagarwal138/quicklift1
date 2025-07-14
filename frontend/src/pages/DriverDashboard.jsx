@@ -8,6 +8,8 @@ import L from 'leaflet';
 import { useAuth } from '../context/AuthContext';
 import DriverHeader from '../components/DriverHeader';
 import DriverTripHistoryList from '../components/DriverTripHistoryList';
+import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
 
 const driverIcon = new L.Icon({
     iconUrl: 'https://img.icons8.com/ios-filled/50/000000/car.png',
@@ -25,7 +27,7 @@ const menuItems = [
 
 const DriverDashboard = () => {
     const { success, error, info } = useToast();
-    const { logout } = useAuth();
+    const { logout, user } = useAuth();
     const [driverStatus, setDriverStatus] = useState('ONLINE');
     const [pendingTrips, setPendingTrips] = useState([]);
     const [activeTrip, setActiveTrip] = useState(null);
@@ -62,6 +64,25 @@ const DriverDashboard = () => {
             setIsLoading(false);
         }
     };
+
+    useEffect(() => {
+        if (!user || user.role !== 'DRIVER') return;
+        const socketFactory = () => new SockJS(import.meta.env.VITE_WS_BASE_URL);
+        const client = new Client({
+            webSocketFactory: socketFactory,
+            reconnectDelay: 5000,
+            heartbeatIncoming: 4000,
+            heartbeatOutgoing: 4000,
+        });
+        client.onConnect = () => {
+            client.subscribe(`/topic/driver/${user.id}/requests`, (message) => {
+                fetchAllData();
+                info('New trip request received!');
+            });
+        };
+        client.activate();
+        return () => client.deactivate();
+    }, [user]);
 
     useEffect(() => {
         fetchAllData();

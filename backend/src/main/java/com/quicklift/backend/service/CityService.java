@@ -15,10 +15,13 @@ public class CityService {
     @Autowired
     private CityRepository cityRepository;
 
-    @PostConstruct
     public void initializeCities() {
-        if (cityRepository.count() == 0) {
-            loadIndianCities();
+        try {
+            if (cityRepository.count() == 0) {
+                loadIndianCities();
+            }
+        } catch (Exception e) {
+            System.err.println("[CityService] Skipping city initialization: " + e.getMessage());
         }
     }
 

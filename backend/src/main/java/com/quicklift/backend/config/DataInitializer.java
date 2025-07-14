@@ -16,15 +16,17 @@ public class DataInitializer implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         // Create a default admin user if one doesn't exist
-        if (userService.findByUsername("admin").isEmpty()) {
+        String adminUsername = System.getenv().getOrDefault("ADMIN_USERNAME", "admin");
+        String adminPassword = System.getenv().getOrDefault("ADMIN_PASSWORD", "password");
+        String adminEmail = System.getenv().getOrDefault("ADMIN_EMAIL", "admin@rideshare.com");
+        if (userService.findByUsername(adminUsername).isEmpty()) {
             User admin = new User();
-            admin.setUsername("admin");
+            admin.setUsername(adminUsername);
             admin.setFirstName("Admin");
             admin.setLastName("User");
-            admin.setEmail("admin@rideshare.com");
-            admin.setPassword("password"); // Will be encoded by the service
+            admin.setEmail(adminEmail);
+            admin.setPassword(adminPassword); // Will be encoded by the service
             admin.setRole(UserRole.ADMIN);
-            
             userService.createUser(admin, UserRole.ADMIN);
             System.out.println("Created default admin user.");
         }

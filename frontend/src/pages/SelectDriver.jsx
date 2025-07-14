@@ -41,7 +41,7 @@ const SelectDriver = () => {
 
   useEffect(() => {
     if (!tripId) return;
-    const socketFactory = () => new SockJS('http://localhost:8080/ws');
+    const socketFactory = () => new SockJS(import.meta.env.VITE_WS_BASE_URL);
     const client = new Client({
       webSocketFactory: socketFactory,
       debug: () => {},

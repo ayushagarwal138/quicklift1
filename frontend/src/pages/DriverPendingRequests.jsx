@@ -1,10 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { driverAPI } from '../api/driver';
 import { Check, X, MapPin, Navigation, Car, Clock } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
+import { Client } from '@stomp/stompjs';
+import SockJS from 'sockjs-client';
 
 const DriverPendingRequests = () => {
   const [pendingTrips, setPendingTrips] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const { info } = useToast();
 
   const fetchTrips = async () => {
     setLoading(true);
@@ -19,6 +25,25 @@ const DriverPendingRequests = () => {
   useEffect(() => {
     fetchTrips();
   }, []);
+
+  useEffect(() => {
+    if (!user || user.role !== 'DRIVER') return;
+    const socketFactory = () => new SockJS(import.meta.env.VITE_WS_BASE_URL);
+    const client = new Client({
+      webSocketFactory: socketFactory,
+      reconnectDelay: 5000,
+      heartbeatIncoming: 4000,
+      heartbeatOutgoing: 4000,
+    });
+    client.onConnect = () => {
+      client.subscribe(`/topic/driver/${user.id}/requests`, (message) => {
+        fetchTrips();
+        info('New trip request received!');
+      });
+    };
+    client.activate();
+    return () => client.deactivate();
+  }, [user]);
 
   const handleAccept = async (tripId) => {
     await driverAPI.acceptTrip(tripId);
