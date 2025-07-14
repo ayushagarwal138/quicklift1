@@ -46,7 +46,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         // The endpoint for WebSocket connections
         registry.addEndpoint("/ws")
-                .setAllowedOrigins("http://localhost:5173", "http://localhost:3000")
+                .setAllowedOrigins("http://localhost:5173", "http://localhost:3000", "https://quicklift.netlify.app")
                 .addInterceptors(new JwtHandshakeInterceptor())
                 .withSockJS();
     }
