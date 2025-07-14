@@ -2,49 +2,49 @@ import api from './axios';
 
 export const driverAPI = {
   getAvailableTrips: async () => {
-    const response = await api.get('/driver/available-trips');
+    const response = await api.get('/api/driver/available-trips');
     return response.data;
   },
 
   acceptTrip: async (tripId) => {
-    const response = await api.post(`/driver/trips/${tripId}/accept`);
+    const response = await api.post(`/api/driver/trips/${tripId}/accept`);
     return response.data;
   },
 
   startTrip: async (tripId) => {
-    const response = await api.post(`/driver/trips/${tripId}/start`);
+    const response = await api.post(`/api/driver/trips/${tripId}/start`);
     return response.data;
   },
 
   completeTrip: async (tripId, finalFare) => {
-    const response = await api.post(`/driver/trips/${tripId}/complete`, null, {
+    const response = await api.post(`/api/driver/trips/${tripId}/complete`, null, {
       params: { finalFare }
     });
     return response.data;
   },
 
   getMyActiveTrip: async () => {
-    const response = await api.get('/driver/my-active-trip');
+    const response = await api.get('/api/driver/my-active-trip');
     return response.data;
   },
 
   getMyTrips: async () => {
-    const response = await api.get('/driver/my-trips');
+    const response = await api.get('/api/driver/my-trips');
     return response.data;
   },
 
   setStatus: async (status) => {
-    const response = await api.post(`/driver/set-status?status=${status}`);
+    const response = await api.post(`/api/driver/set-status?status=${status}`);
     return response.data;
   },
 
   rejectTrip: async (tripId) => {
-    const response = await api.post(`/driver/trips/${tripId}/reject`);
+    const response = await api.post(`/api/driver/trips/${tripId}/reject`);
     return response.data;
   },
 
   getOnlineDrivers: async () => {
-    const response = await api.get('/driver/online');
+    const response = await api.get('/api/driver/online');
     return response.data;
   },
 }; 
