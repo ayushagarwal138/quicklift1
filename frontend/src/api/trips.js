@@ -1,4 +1,5 @@
 import api from './axios';
+import { publicApi } from './api';
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 export const updatePaymentMethod = async (tripId, paymentMethod) => {
@@ -49,7 +50,7 @@ export const tripsAPI = {
   },
 
   estimateFare: async (tripData) => {
-    const response = await api.post('/trips/estimate', tripData);
+    const response = await publicApi.post('/api/trips/estimate', tripData);
     return response.data;
   },
 

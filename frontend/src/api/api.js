@@ -2,7 +2,16 @@ import axios from 'axios';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
+// Authenticated instance (with interceptors)
 const api = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Public instance (no interceptors, no token)
+const publicApi = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
@@ -38,4 +47,4 @@ api.interceptors.response.use(
   }
 );
 
-export { api }; 
+export { api, publicApi }; 

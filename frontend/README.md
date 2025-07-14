@@ -105,11 +105,27 @@ The built files will be in the `dist` directory.
 - ✅ Intuitive navigation and user experience
 - ✅ Mobile-friendly design
 
-## 🔗 API Integration
+## 🌐 Environment Variables for API & WebSocket
 
-The frontend integrates with the Spring Boot backend API:
+To connect the frontend to your backend (local or deployed), set the following environment variables in a `.env` file in the `frontend/` directory:
 
-- **Base URL**: `http://localhost:8080/api`
+```
+VITE_API_BASE_URL=https://quicklift.onrender.com
+VITE_WS_BASE_URL=wss://quicklift.onrender.com/ws
+```
+
+- For local development, you might use:
+  - `VITE_API_BASE_URL=http://localhost:8080`
+  - `VITE_WS_BASE_URL=ws://localhost:8080/ws`
+
+After changing these, restart the dev server (`npm run dev`).
+
+## 📎 API Integration
+
+The frontend integrates with the Spring Boot backend API using environment variables:
+
+- **Base URL**: Set via `VITE_API_BASE_URL` in your `.env` file
+- **WebSocket URL**: Set via `VITE_WS_BASE_URL` in your `.env` file
 - **Authentication**: JWT token-based authentication
 - **CORS**: Configured for cross-origin requests
 

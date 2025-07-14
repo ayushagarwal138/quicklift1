@@ -13,8 +13,11 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
-    if (token) {
+    if (token && token.trim() !== '') {
       config.headers.Authorization = `Bearer ${token}`;
+    } else {
+      // Remove Authorization header if token is not valid
+      delete config.headers.Authorization;
     }
     return config;
   },
@@ -29,7 +32,14 @@ api.interceptors.response.use(
     return response;
   },
   (error) => {
-    if (error.response?.status === 401) {
+    // Only redirect to login for protected endpoints
+    const url = error.config?.url || '';
+    const isPublicEndpoint =
+      url.includes('/auth/check-username') ||
+      url.includes('/auth/check-email') ||
+      url.includes('/auth/login') ||
+      url.includes('/auth/register');
+    if (error.response?.status === 401 && !isPublicEndpoint) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';

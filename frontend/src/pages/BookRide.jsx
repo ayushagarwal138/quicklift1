@@ -6,7 +6,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { useToast } from '../context/ToastContext';
 import { tripsAPI } from '../api/trips';
-import { api } from '../api/api';
+import { api, publicApi } from '../api/api';
 
 // Fix for default marker icon issue with webpack
 delete L.Icon.Default.prototype._getIconUrl;
@@ -88,7 +88,7 @@ const BookRide = () => {
       return;
     }
     try {
-      const response = await api.get(`/locations/search?q=${query}`);
+      const response = await publicApi.get(`/api/locations/search?q=${query}`);
       setSuggestions(response.data);
     } catch (err) {
       error('Failed to search for location.');
