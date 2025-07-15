@@ -23,35 +23,38 @@ QuickLift is a modern ride-sharing platform featuring real-time driver matching,
 ## Getting Started
 
 ### Backend Setup
-1. **Requirements:** Java 17+ and Maven.
-2. **Database:** Configure MySQL and update `backend/src/main/resources/application.properties` as needed.
-3. **Database Schema:**
-   - Ensure your `trips` table includes:
-     - `paid` (BOOLEAN, default FALSE)
-     - `paymentMethod` (VARCHAR)
-   - Example migration:
-     ```sql
-     ALTER TABLE trips ADD COLUMN paid BOOLEAN NOT NULL DEFAULT FALSE;
-     ALTER TABLE trips ADD COLUMN paymentMethod VARCHAR(32);
-     ```
-4. **Run the Backend:**
+1. **Requirements:** Java 21 and Maven.
+2. **Database:** By default, the backend uses an in-memory H2 database for development and testing. To use MySQL or another database, update `backend/src/main/resources/application.properties` accordingly.
+3. **Run the Backend:**
    ```sh
    cd backend
    ./mvnw spring-boot:run
    ```
+   The API will be available at [http://localhost:8080](http://localhost:8080).
+4. **Testing:**
+   To run backend tests:
+   ```sh
+   ./mvnw test
+   ```
 
 ### Frontend Setup
-1. **Requirements:** Node.js 18+ and npm.
-2. **Install Dependencies:**
+1. **Requirements:** Node.js 16+ and npm.
+2. **Environment Variables:**
+   - Create a `.env` file in the `frontend/` directory with the following (adjust as needed):
+     ```env
+     VITE_API_BASE_URL=http://localhost:8080
+     VITE_WS_BASE_URL=ws://localhost:8080/ws
+     ```
+3. **Install Dependencies:**
    ```sh
    cd frontend
    npm install
    ```
-3. **Run the Frontend:**
+4. **Run the Frontend:**
    ```sh
    npm run dev
    ```
-4. **Access the App:** [http://localhost:5173](http://localhost:5173)
+5. **Access the App:** [http://localhost:5173](http://localhost:5173)
 
 ## Usage
 - **User:** Register, log in, book rides, select payment method, and pay after trip completion.
