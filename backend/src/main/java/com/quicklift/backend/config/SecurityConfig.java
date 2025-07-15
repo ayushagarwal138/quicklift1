@@ -50,6 +50,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/auth/check-username").permitAll()
                 .requestMatchers("/api/auth/check-email").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/driver/online").permitAll()
                 .requestMatchers("/api/public/**").permitAll()
                 .requestMatchers("/api/cities/**").permitAll()
                 .requestMatchers("/api/locations/**").permitAll()
