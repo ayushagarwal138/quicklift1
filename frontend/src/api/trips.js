@@ -20,32 +20,32 @@ export const updatePaymentMethod = async (tripId, paymentMethod) => {
 
 export const tripsAPI = {
   bookTrip: async (tripData) => {
-    const response = await api.post('/trips/book', tripData);
+    const response = await api.post('/api/trips/book', tripData);
     return response.data;
   },
 
   getMyTrips: async () => {
-    const response = await api.get('/trips/my-trips');
+    const response = await api.get('/api/trips/my-trips');
     return response.data;
   },
 
   getTripById: async (id) => {
-    const response = await api.get(`/trips/${id}`);
+    const response = await api.get(`/api/trips/${id}`);
     return response.data;
   },
 
   cancelTrip: async (id) => {
-    const response = await api.post(`/trips/${id}/cancel`);
+    const response = await api.post(`/api/trips/${id}/cancel`);
     return response.data;
   },
 
   rateTrip: async (id, rating, review) => {
-    const response = await api.post(`/trips/${id}/rate`, { rating, review });
+    const response = await api.post(`/api/trips/${id}/rate`, { rating, review });
     return response.data;
   },
 
   getTripsByStatus: async (status) => {
-    const response = await api.get(`/trips/status/${status}`);
+    const response = await api.get(`/api/trips/status/${status}`);
     return response.data;
   },
 
@@ -55,13 +55,13 @@ export const tripsAPI = {
   },
 
   requestToDriver: async (tripData, driverId) => {
-    const response = await api.post(`/trips/request-to-driver?driverId=${driverId}`, tripData);
+    const response = await api.post(`/api/trips/request-to-driver?driverId=${driverId}`, tripData);
     return response.data;
   },
 
   payForTrip: async (tripId) => {
     const token = localStorage.getItem('token');
-    const response = await fetch(`${API_BASE_URL}/trips/${tripId}/pay`, {
+    const response = await fetch(`${API_BASE_URL}/api/trips/${tripId}/pay`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',

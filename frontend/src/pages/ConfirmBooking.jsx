@@ -24,6 +24,15 @@ const ConfirmBooking = () => {
     fetchTrip();
   }, [tripId]);
 
+  useEffect(() => {
+    if (trip) {
+      const timer = setTimeout(() => {
+        navigate(`/trips/${tripId}`);
+      }, 2000); // 2 seconds delay
+      return () => clearTimeout(timer);
+    }
+  }, [trip, tripId, navigate]);
+
   if (loading) return <div className="text-center py-10">Loading booking confirmation...</div>;
   if (error) return <div className="text-center py-10 text-red-500">{error}</div>;
   if (!trip) return <div className="text-center py-10">Trip not found.</div>;
