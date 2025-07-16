@@ -2,17 +2,17 @@ import api from './axios';
 
 export const adminAPI = {
   getAllUsers: async () => {
-    const response = await api.get('/admin/users');
+    const response = await api.get('/api/admin/users');
     return response.data;
   },
 
   getAllDrivers: async () => {
-    const response = await api.get('/admin/drivers');
+    const response = await api.get('/api/admin/drivers');
     return response.data;
   },
 
   getAllTrips: async () => {
-    const response = await api.get('/admin/trips');
+    const response = await api.get('/api/admin/trips');
     return response.data;
   },
 
@@ -22,7 +22,7 @@ export const adminAPI = {
   },
 
   deleteDriver: async (driverId) => {
-    const response = await api.delete(`/admin/drivers/${driverId}`);
+    const response = await api.delete(`/api/admin/drivers/${driverId}`);
     return response.data;
   },
 }; 
