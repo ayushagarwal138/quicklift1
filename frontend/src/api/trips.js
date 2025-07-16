@@ -61,7 +61,9 @@ export const tripsAPI = {
 
   payForTrip: async (tripId) => {
     const token = localStorage.getItem('token');
-    const response = await fetch(`${API_BASE_URL}/api/trips/${tripId}/pay`, {
+    // Ensure no double slash in URL and add /api prefix
+    const baseUrl = API_BASE_URL.replace(/\/$/, '');
+    const response = await fetch(`${baseUrl}/api/trips/${tripId}/pay`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
