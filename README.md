@@ -18,11 +18,11 @@ The project demonstrates proficiency in building **RESTful APIs**, handling **co
 ## 📸 Screenshots
 | User Dashboard | Driver Dashboard |
 |:---:|:---:|
-| <img src="https://drive.google.com/uc?export=view&id=1lhiv4VkBRkFMNSwz4bK6GR3QBkTEckmA" alt="User Dashboard" width="400"/> | <img src="https://drive.google.com/uc?export=view&id=1C7Hu3LL-2HSPpy3tM2Pdc024DqHyWA2r" alt="Driver Dashboard" width="400"/> |
+| <img src="https://drive.google.com/uc?export=view&id=1yAJ0IuMcAEmGRL5y0ZHHOu3ZmH4eALgO" alt="User Dashboard" width="400"/> | <img src="https://drive.google.com/uc?export=view&id=1wCDWZfk6run2-zwvVsA8-ojyg2BjdlB-" alt="Driver Dashboard" width="400"/> |
 
-| Pofile Settings | Admin Analytics |
+| Login Page | Admin Analytics |
 |:---:|:---:|
-| <img src="https://drive.google.com/thumbnail?id=1GcJfjQTjlSVmLA5PI2vOf9sMYhzn6DSp&sz=w1000" alt="Payment" width="400"/> | <img src="https://drive.google.com/thumbnail?id=1L4D9QZwl4ITRSL9VViumvVO-C1LAF6AE&sz=w1000" alt="Admin" width="400"/> |
+| <img src="https://drive.google.com/uc?export=view&id=11ZcSpMvH357F3ug8xxNfZsIVB3irLpg-" alt="Payment" width="400"/> | <img src="https://drive.google.com/uc?export=view&id=1FOajuEZgbQ9YSltB4jivtK_Sp0JT0T2S" alt="Admin" width="400"/> |
 
 ---
 
