@@ -66,7 +66,7 @@ public class AuthController {
             new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword()));
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        User user = userService.findByUsername(authRequest.getUsername())
+        User user = userService.findByUsernameOrEmail(authRequest.getUsername())
             .orElseThrow(() -> new IllegalArgumentException("Invalid username or password"));
         return issueSession(user, response, HttpStatus.OK);
     }

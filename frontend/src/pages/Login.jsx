@@ -109,7 +109,7 @@ const Login = () => {
             )}
 
             <div>
-              <label htmlFor="username" className="input-label">Username</label>
+              <label htmlFor="username" className="input-label">Username or email</label>
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-surface-400" />
                 <input
@@ -120,7 +120,7 @@ const Login = () => {
                   value={formData.username}
                   onChange={handleChange}
                   className="input pl-11"
-                  placeholder="Enter your username"
+                  placeholder="Enter your username or email"
                 />
               </div>
             </div>

@@ -52,6 +52,12 @@ public class UserService implements UserDetailsService {
         return userRepository.findByNormalizedUsername(normalize(username));
     }
 
+    public Optional<User> findByUsernameOrEmail(String identifier) {
+        String normalizedIdentifier = normalize(identifier);
+        return userRepository.findByNormalizedUsername(normalizedIdentifier)
+            .or(() -> userRepository.findByNormalizedEmail(normalizedIdentifier));
+    }
+
     public Optional<User> findByEmail(String email) {
         return userRepository.findByNormalizedEmail(normalize(email));
     }
@@ -82,8 +88,8 @@ public class UserService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        User user = userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
+        User user = findByUsernameOrEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with username or email: " + username));
         return new org.springframework.security.core.userdetails.User(
                 user.getUsername(),
                 user.getPassword(),
