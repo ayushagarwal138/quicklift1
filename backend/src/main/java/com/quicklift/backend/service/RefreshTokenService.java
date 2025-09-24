@@ -4,6 +4,7 @@ import com.quicklift.backend.model.RefreshToken;
 import com.quicklift.backend.model.User;
 import com.quicklift.backend.repository.RefreshTokenRepository;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,13 +44,13 @@ public class RefreshTokenService {
     @Transactional
     public User rotate(String rawToken) {
         RefreshToken token = refreshTokenRepository.findByTokenHash(hash(rawToken))
-            .orElseThrow(() -> new IllegalArgumentException("Invalid refresh token"));
+            .orElseThrow(() -> new BadCredentialsException("Invalid refresh token"));
 
         if (token.getRevokedAt() != null || token.getExpiresAt().isBefore(LocalDateTime.now())) {
             if (token.getRevokedAt() != null) {
                 revokeAllActiveTokens(token.getUser());
             }
-            throw new IllegalArgumentException("Invalid refresh token");
+            throw new BadCredentialsException("Invalid refresh token");
         }
 
         token.setRevokedAt(LocalDateTime.now());

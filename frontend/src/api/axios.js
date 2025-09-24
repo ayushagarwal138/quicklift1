@@ -2,6 +2,7 @@ import axios from 'axios';
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080').replace(/\/$/, '');
 export const API_PREFIX = '/api/v1';
+const AUTH_SESSION_STORAGE_KEY = 'quicklift:auth-session';
 
 let accessToken = null;
 let refreshPromise = null;
@@ -14,6 +15,18 @@ export const getAccessToken = () => accessToken;
 
 export const clearAccessToken = () => {
   accessToken = null;
+};
+
+export const rememberAuthSession = () => {
+  window.localStorage.setItem(AUTH_SESSION_STORAGE_KEY, 'true');
+};
+
+export const hasRememberedAuthSession = () => (
+  window.localStorage.getItem(AUTH_SESSION_STORAGE_KEY) === 'true'
+);
+
+export const forgetAuthSession = () => {
+  window.localStorage.removeItem(AUTH_SESSION_STORAGE_KEY);
 };
 
 export const publicApi = axios.create({
@@ -58,6 +71,7 @@ api.interceptors.response.use(
       } catch (refreshError) {
         refreshPromise = null;
         clearAccessToken();
+        forgetAuthSession();
         if (!window.location.pathname.includes('/login')) {
           window.location.href = '/login';
         }

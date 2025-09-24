@@ -1,6 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { authAPI } from '../api/auth';
-import { clearAccessToken, setAccessToken } from '../api/axios';
+import {
+  clearAccessToken,
+  forgetAuthSession,
+  hasRememberedAuthSession,
+  rememberAuthSession,
+  setAccessToken,
+} from '../api/axios';
 
 const AuthContext = createContext();
 
@@ -37,16 +43,21 @@ export const AuthProvider = ({ children }) => {
         const oauthToken = hashParams.get('accessToken');
         if (oauthToken) {
           setAccessToken(oauthToken);
+          rememberAuthSession();
           window.history.replaceState(null, '', window.location.pathname + window.location.search);
-        } else {
+        } else if (hasRememberedAuthSession()) {
           const refreshResponse = await authAPI.refresh();
           setAccessToken(refreshResponse.accessToken || refreshResponse.token);
+          rememberAuthSession();
         }
 
-        const me = await authAPI.me();
-        setUser(normalizeUser(me));
+        if (oauthToken || hasRememberedAuthSession()) {
+          const me = await authAPI.me();
+          setUser(normalizeUser(me));
+        }
       } catch {
         clearAccessToken();
+        forgetAuthSession();
         setUser(null);
       } finally {
         setLoading(false);
@@ -60,6 +71,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await authAPI.login({ username, password });
       setAccessToken(response.accessToken || response.token);
+      rememberAuthSession();
       setUser(normalizeUser(response));
       return { success: true };
     } catch (error) {
@@ -74,6 +86,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await authAPI.register(userData);
       setAccessToken(response.accessToken || response.token);
+      rememberAuthSession();
       setUser(normalizeUser(response));
       return { success: true };
     } catch (error) {
@@ -91,6 +104,7 @@ export const AuthProvider = ({ children }) => {
       // Logout should clear local state even if the network request fails.
     } finally {
       clearAccessToken();
+      forgetAuthSession();
       setUser(null);
     }
   };
