@@ -112,16 +112,33 @@ const BookRide = () => {
   const fetchAddress = async (coords, setAddress, setSearchText) => {
     if (!coords) return;
     try {
+      // Try backend API first
       const response = await publicApi.get(`/api/locations/reverse?lat=${coords.lat}&lon=${coords.lng}`);
       const data = response.data;
       const address = data.display_name || 'Address not found';
       setAddress(address);
       if(setSearchText) setSearchText(address);
     } catch (err) {
-      const errorMsg = 'Could not fetch address';
-      setAddress(errorMsg);
-      if(setSearchText) setSearchText(errorMsg);
-      error('Failed to fetch address from coordinates.');
+      console.log('Backend API failed, trying alternative approach:', err);
+      
+      // Fallback: Use a CORS-friendly reverse geocoding service
+      try {
+        // Using a CORS proxy or alternative service
+        const proxyUrl = 'https://api.allorigins.win/raw?url=';
+        const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`;
+        const response = await fetch(proxyUrl + encodeURIComponent(nominatimUrl));
+        const data = await response.json();
+        const address = data.display_name || 'Address not found';
+        setAddress(address);
+        if(setSearchText) setSearchText(address);
+      } catch (fallbackErr) {
+        console.log('Fallback also failed:', fallbackErr);
+        // Final fallback: Use browser's geolocation API or show coordinates
+        const address = `Location: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`;
+        setAddress(address);
+        if(setSearchText) setSearchText(address);
+        error('Could not fetch detailed address. Using coordinates instead.');
+      }
     }
   };
 

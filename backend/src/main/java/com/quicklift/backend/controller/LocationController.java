@@ -67,8 +67,4 @@ public class LocationController {
         }
     }
 
-    @GetMapping("/test")
-    public ResponseEntity<String> test() {
-        return ResponseEntity.ok("LocationController is working!");
-    }
 } 
