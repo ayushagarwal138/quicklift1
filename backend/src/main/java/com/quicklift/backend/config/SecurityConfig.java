@@ -56,6 +56,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/cities/**").permitAll()
                 .requestMatchers("/api/locations/**").permitAll()
                 .requestMatchers("/api/locations-new/**").permitAll()
+                .requestMatchers("/api/geo/**").permitAll()
                 .requestMatchers("/api/trips/estimate").permitAll()
                 .requestMatchers("/h2-console/**").permitAll()
                 .anyRequest().authenticated()
