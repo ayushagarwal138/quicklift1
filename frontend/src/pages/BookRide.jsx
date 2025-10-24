@@ -140,20 +140,52 @@ const BookRide = () => {
       const data = await response.json();
       console.log('BigDataCloud API response:', data);
       
-      // Extract address from BigDataCloud response
+      // Extract address from BigDataCloud response with more specific details
       let address = 'Address not found';
+      
       if (data.localityInfo?.administrative) {
         const admin = data.localityInfo.administrative;
-        if (admin.length > 0) {
-          address = admin[0].name;
-          if (admin.length > 1) {
-            address += `, ${admin[1].name}`;
+        const parts = [];
+        
+        // Try to get the most specific location first
+        if (data.locality && data.locality !== data.city) {
+          parts.push(data.locality);
+        }
+        if (data.city && !parts.includes(data.city)) {
+          parts.push(data.city);
+        }
+        
+        // Add administrative divisions (state, country)
+        if (admin.length > 1) {
+          // Get state/province (usually index 1)
+          const state = admin.find(a => a.adminLevel === 4 || a.order === 5);
+          if (state && !parts.includes(state.name)) {
+            parts.push(state.name);
           }
         }
+        
+        // Add country if we have space
+        if (admin.length > 0 && parts.length < 3) {
+          const country = admin[0];
+          if (country && !parts.includes(country.name)) {
+            parts.push(country.name);
+          }
+        }
+        
+        address = parts.join(', ');
       } else if (data.city && data.countryName) {
         address = `${data.city}, ${data.countryName}`;
       } else if (data.locality) {
         address = data.locality;
+      }
+      
+      // If we still don't have a good address, try alternative fields
+      if (address === 'Address not found' || address.length < 3) {
+        if (data.principalSubdivision && data.countryName) {
+          address = `${data.principalSubdivision}, ${data.countryName}`;
+        } else if (data.continent && data.countryName) {
+          address = `${data.countryName}`;
+        }
       }
       
       console.log('BigDataCloud API success:', address);

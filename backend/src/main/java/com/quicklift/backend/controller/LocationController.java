@@ -18,6 +18,10 @@ public class LocationController {
 
     private final RestTemplate restTemplate = new RestTemplate();
     private static final Logger logger = LoggerFactory.getLogger(LocationController.class);
+    
+    public LocationController() {
+        logger.info("LocationController initialized successfully");
+    }
 
     @GetMapping("/search")
     public ResponseEntity<String> searchLocations(@RequestParam("q") String query) {
@@ -35,6 +39,12 @@ public class LocationController {
         } catch (Exception e) {
             return ResponseEntity.status(500).body("Error while fetching from Nominatim: " + e.getMessage());
         }
+    }
+
+    @GetMapping("/health")
+    public ResponseEntity<String> health() {
+        logger.info("Health check endpoint called");
+        return ResponseEntity.ok("LocationController is working!");
     }
 
     @GetMapping("/reverse")
