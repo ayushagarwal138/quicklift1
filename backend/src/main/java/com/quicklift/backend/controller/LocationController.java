@@ -33,4 +33,22 @@ public class LocationController {
             return ResponseEntity.status(500).body("Error while fetching from Nominatim: " + e.getMessage());
         }
     }
+
+    @GetMapping("/reverse")
+    public ResponseEntity<String> reverseGeocode(@RequestParam("lat") double lat, @RequestParam("lon") double lon) {
+        String url = "https://nominatim.openstreetmap.org/reverse?format=json&lat=" + lat + "&lon=" + lon;
+        
+        HttpHeaders headers = new HttpHeaders();
+        // Nominatim API requires a User-Agent header
+        headers.set("User-Agent", "Rideshare-App/1.0"); 
+
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            return response;
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Error while fetching from Nominatim: " + e.getMessage());
+        }
+    }
 } 

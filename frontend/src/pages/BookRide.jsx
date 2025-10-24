@@ -112,8 +112,8 @@ const BookRide = () => {
   const fetchAddress = async (coords, setAddress, setSearchText) => {
     if (!coords) return;
     try {
-      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`);
-      const data = await response.json();
+      const response = await publicApi.get(`/api/locations/reverse?lat=${coords.lat}&lon=${coords.lng}`);
+      const data = response.data;
       const address = data.display_name || 'Address not found';
       setAddress(address);
       if(setSearchText) setSearchText(address);
