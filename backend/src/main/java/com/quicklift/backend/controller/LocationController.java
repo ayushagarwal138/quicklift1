@@ -17,8 +17,9 @@ import org.slf4j.LoggerFactory;
 @RequestMapping("/api/locations")
 public class LocationController {
 
-    @Autowired
-    private RestTemplate restTemplate;
+    // Temporarily remove RestTemplate dependency to test controller loading
+    // @Autowired
+    // private RestTemplate restTemplate;
     private static final Logger logger = LoggerFactory.getLogger(LocationController.class);
     
     public LocationController() {
