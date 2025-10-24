@@ -9,12 +9,15 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @RestController
 @RequestMapping("/api/locations")
 public class LocationController {
 
     private final RestTemplate restTemplate = new RestTemplate();
+    private static final Logger logger = LoggerFactory.getLogger(LocationController.class);
 
     @GetMapping("/search")
     public ResponseEntity<String> searchLocations(@RequestParam("q") String query) {
@@ -35,19 +38,31 @@ public class LocationController {
     }
 
     @GetMapping("/reverse")
-    public ResponseEntity<String> reverseGeocode(@RequestParam("lat") double lat, @RequestParam("lon") double lon) {
-        String url = "https://nominatim.openstreetmap.org/reverse?format=json&lat=" + lat + "&lon=" + lon;
+    public ResponseEntity<String> reverseGeocode(@RequestParam("lat") String lat, @RequestParam("lon") String lon) {
+        logger.info("Reverse geocoding request - lat: {}, lon: {}", lat, lon);
         
-        HttpHeaders headers = new HttpHeaders();
-        // Nominatim API requires a User-Agent header
-        headers.set("User-Agent", "Rideshare-App/1.0"); 
-
-        HttpEntity<String> entity = new HttpEntity<>(headers);
-
         try {
+            // Validate that the parameters are valid numbers
+            double latDouble = Double.parseDouble(lat);
+            double lonDouble = Double.parseDouble(lon);
+            
+            String url = "https://nominatim.openstreetmap.org/reverse?format=json&lat=" + latDouble + "&lon=" + lonDouble;
+            logger.info("Calling Nominatim API: {}", url);
+            
+            HttpHeaders headers = new HttpHeaders();
+            // Nominatim API requires a User-Agent header
+            headers.set("User-Agent", "Rideshare-App/1.0"); 
+
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
+            logger.info("Nominatim API response status: {}", response.getStatusCode());
             return response;
+        } catch (NumberFormatException e) {
+            logger.error("Invalid latitude or longitude parameters: lat={}, lon={}", lat, lon);
+            return ResponseEntity.status(400).body("Invalid latitude or longitude parameters");
         } catch (Exception e) {
+            logger.error("Error while fetching from Nominatim: {}", e.getMessage(), e);
             return ResponseEntity.status(500).body("Error while fetching from Nominatim: " + e.getMessage());
         }
     }
