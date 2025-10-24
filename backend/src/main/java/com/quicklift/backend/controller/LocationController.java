@@ -66,4 +66,9 @@ public class LocationController {
             return ResponseEntity.status(500).body("Error while fetching from Nominatim: " + e.getMessage());
         }
     }
+
+    @GetMapping("/test")
+    public ResponseEntity<String> test() {
+        return ResponseEntity.ok("LocationController is working!");
+    }
 } 
