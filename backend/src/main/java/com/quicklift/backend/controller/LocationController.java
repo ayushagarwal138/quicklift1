@@ -58,24 +58,19 @@ public class LocationController {
             double latDouble = Double.parseDouble(lat);
             double lonDouble = Double.parseDouble(lon);
             
-            String url = "https://nominatim.openstreetmap.org/reverse?format=json&lat=" + latDouble + "&lon=" + lonDouble;
-            logger.info("Calling Nominatim API: {}", url);
+            // For now, return a simple response to test if the endpoint works
+            String mockResponse = String.format("{\"display_name\":\"Test Location at %.6f, %.6f\",\"lat\":\"%.6f\",\"lon\":\"%.6f\"}", 
+                latDouble, lonDouble, latDouble, lonDouble);
             
-            HttpHeaders headers = new HttpHeaders();
-            // Nominatim API requires a User-Agent header
-            headers.set("User-Agent", "Rideshare-App/1.0"); 
-
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-
-            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, entity, String.class);
-            logger.info("Nominatim API response status: {}", response.getStatusCode());
-            return response;
+            logger.info("Returning mock response for testing");
+            return ResponseEntity.ok(mockResponse);
+            
         } catch (NumberFormatException e) {
             logger.error("Invalid latitude or longitude parameters: lat={}, lon={}", lat, lon);
             return ResponseEntity.status(400).body("Invalid latitude or longitude parameters");
         } catch (Exception e) {
-            logger.error("Error while fetching from Nominatim: {}", e.getMessage(), e);
-            return ResponseEntity.status(500).body("Error while fetching from Nominatim: " + e.getMessage());
+            logger.error("Error in reverse geocoding: {}", e.getMessage(), e);
+            return ResponseEntity.status(500).body("Error: " + e.getMessage());
         }
     }
 
