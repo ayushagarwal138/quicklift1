@@ -121,23 +121,41 @@ const BookRide = () => {
     } catch (err) {
       console.log('Backend API failed, trying alternative approach:', err);
       
-      // Fallback: Use a CORS-friendly reverse geocoding service
+      // Fallback: Use a different CORS proxy service
       try {
-        // Using a CORS proxy or alternative service
-        const proxyUrl = 'https://api.allorigins.win/raw?url=';
+        // Using cors-anywhere proxy
+        const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
         const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`;
-        const response = await fetch(proxyUrl + encodeURIComponent(nominatimUrl));
+        const response = await fetch(proxyUrl + nominatimUrl, {
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        });
         const data = await response.json();
         const address = data.display_name || 'Address not found';
         setAddress(address);
         if(setSearchText) setSearchText(address);
       } catch (fallbackErr) {
-        console.log('Fallback also failed:', fallbackErr);
-        // Final fallback: Use browser's geolocation API or show coordinates
-        const address = `Location: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`;
-        setAddress(address);
-        if(setSearchText) setSearchText(address);
-        error('Could not fetch detailed address. Using coordinates instead.');
+        console.log('CORS proxy failed, trying alternative:', fallbackErr);
+        
+        // Alternative: Use a different geocoding service
+        try {
+          // Using a different service that might be more CORS-friendly
+          const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${coords.lat}&longitude=${coords.lng}&localityLanguage=en`);
+          const data = await response.json();
+          const address = data.localityInfo?.administrative?.[0]?.name || 
+                        data.localityInfo?.locality?.[0]?.name || 
+                        `${data.city || 'Unknown'}, ${data.countryName || 'Unknown'}`;
+          setAddress(address);
+          if(setSearchText) setSearchText(address);
+        } catch (secondFallbackErr) {
+          console.log('All geocoding services failed:', secondFallbackErr);
+          // Final fallback: Show coordinates
+          const address = `Location: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`;
+          setAddress(address);
+          if(setSearchText) setSearchText(address);
+          error('Could not fetch detailed address. Using coordinates instead.');
+        }
       }
     }
   };
