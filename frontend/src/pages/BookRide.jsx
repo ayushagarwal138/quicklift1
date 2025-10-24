@@ -111,53 +111,65 @@ const BookRide = () => {
 
   const fetchAddress = async (coords, setAddress, setSearchText) => {
     if (!coords) return;
+    
+    console.log('Fetching address for coordinates:', coords);
+    
     try {
       // Try backend API first
+      console.log('Trying backend API...');
       const response = await publicApi.get(`/api/locations/reverse?lat=${coords.lat}&lon=${coords.lng}`);
       const data = response.data;
       const address = data.display_name || 'Address not found';
+      console.log('Backend API success:', address);
       setAddress(address);
       if(setSearchText) setSearchText(address);
+      return;
     } catch (err) {
-      console.log('Backend API failed, trying alternative approach:', err);
-      
-      // Fallback: Use a different CORS proxy service
-      try {
-        // Using cors-anywhere proxy
-        const proxyUrl = 'https://cors-anywhere.herokuapp.com/';
-        const nominatimUrl = `https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`;
-        const response = await fetch(proxyUrl + nominatimUrl, {
-          headers: {
-            'X-Requested-With': 'XMLHttpRequest'
-          }
-        });
-        const data = await response.json();
-        const address = data.display_name || 'Address not found';
-        setAddress(address);
-        if(setSearchText) setSearchText(address);
-      } catch (fallbackErr) {
-        console.log('CORS proxy failed, trying alternative:', fallbackErr);
-        
-        // Alternative: Use a different geocoding service
-        try {
-          // Using a different service that might be more CORS-friendly
-          const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${coords.lat}&longitude=${coords.lng}&localityLanguage=en`);
-          const data = await response.json();
-          const address = data.localityInfo?.administrative?.[0]?.name || 
-                        data.localityInfo?.locality?.[0]?.name || 
-                        `${data.city || 'Unknown'}, ${data.countryName || 'Unknown'}`;
-          setAddress(address);
-          if(setSearchText) setSearchText(address);
-        } catch (secondFallbackErr) {
-          console.log('All geocoding services failed:', secondFallbackErr);
-          // Final fallback: Show coordinates
-          const address = `Location: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`;
-          setAddress(address);
-          if(setSearchText) setSearchText(address);
-          error('Could not fetch detailed address. Using coordinates instead.');
-        }
-      }
+      console.log('Backend API failed:', err.response?.status, err.message);
     }
+    
+    // Fallback: Use BigDataCloud API directly (skip CORS proxy as it's not reliable)
+    try {
+      console.log('Trying BigDataCloud API...');
+      const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${coords.lat}&longitude=${coords.lng}&localityLanguage=en`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      console.log('BigDataCloud API response:', data);
+      
+      // Extract address from BigDataCloud response
+      let address = 'Address not found';
+      if (data.localityInfo?.administrative) {
+        const admin = data.localityInfo.administrative;
+        if (admin.length > 0) {
+          address = admin[0].name;
+          if (admin.length > 1) {
+            address += `, ${admin[1].name}`;
+          }
+        }
+      } else if (data.city && data.countryName) {
+        address = `${data.city}, ${data.countryName}`;
+      } else if (data.locality) {
+        address = data.locality;
+      }
+      
+      console.log('BigDataCloud API success:', address);
+      setAddress(address);
+      if(setSearchText) setSearchText(address);
+      return;
+    } catch (fallbackErr) {
+      console.log('BigDataCloud API failed:', fallbackErr);
+    }
+    
+    // Final fallback: Show coordinates
+    console.log('All APIs failed, using coordinates');
+    const address = `Location: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`;
+    setAddress(address);
+    if(setSearchText) setSearchText(address);
+    error('Could not fetch detailed address. Using coordinates instead.');
   };
 
   useEffect(() => {
