@@ -34,10 +34,12 @@ const DriverHeader = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <Link to="/driver/dashboard" className="flex items-center">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center mr-3">
-              <span className="text-white font-bold text-lg">D</span>
-            </div>
-            <span className="text-xl font-bold text-white">Driver Panel</span>
+            <img 
+              src="/quicklift.png" 
+              alt="QuickLift Logo" 
+              className="w-8 h-8 mr-3"
+            />
+            <span className="text-xl font-bold text-white">QuickLift Driver</span>
           </Link>
 
           {/* Navigation - Only show for authenticated drivers */}
