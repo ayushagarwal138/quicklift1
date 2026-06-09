@@ -10,6 +10,10 @@ import DriverTripHistoryList from '../components/DriverTripHistoryList';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { getAuthenticatedWsUrl, getStompConnectHeaders } from '../api/ws';
+import MapResizer from '../components/MapResizer';
+import { configureLeafletIcons } from '../utils/leafletIcons';
+
+configureLeafletIcons();
 
 const driverIcon = new L.Icon({
     iconUrl: 'https://img.icons8.com/ios-filled/50/000000/car.png',
@@ -59,7 +63,7 @@ const DriverDashboard = () => {
     };
 
     useEffect(() => {
-        if (!user || user.role !== 'DRIVER') return;
+        if (!user || user.role !== 'DRIVER' || !user.driverId) return;
         const socketFactory = () => new SockJS(getAuthenticatedWsUrl());
         const client = new Client({
             webSocketFactory: socketFactory,
@@ -69,7 +73,7 @@ const DriverDashboard = () => {
             heartbeatOutgoing: 4000,
         });
         client.onConnect = () => {
-            client.subscribe(`/topic/driver/${user.id}/requests`, (message) => {
+            client.subscribe(`/topic/driver/${user.driverId}/requests`, () => {
                 fetchAllData();
                 info('New trip request received!');
             });
@@ -291,6 +295,7 @@ const DriverDashboard = () => {
                                             </div>
                                             <div className="flex-1 min-h-[250px] rounded-xl overflow-hidden">
                                                 <MapContainer center={[activeTrip.pickupLatitude, activeTrip.pickupLongitude]} zoom={13} style={{ height: '100%', width: '100%', minHeight: '250px' }}>
+                                                    <MapResizer watch={`${selectedSection}-${activeTrip.status}`} />
                                                     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                                                     <Marker position={[activeTrip.pickupLatitude, activeTrip.pickupLongitude]} icon={driverIcon}>
                                                         <Popup>Pickup: {activeTrip.pickupLocation}</Popup>
@@ -390,6 +395,7 @@ const DriverDashboard = () => {
                                     </div>
                                     <div className="flex-1 min-h-[300px] rounded-xl overflow-hidden">
                                         <MapContainer center={[activeTrip.pickupLatitude, activeTrip.pickupLongitude]} zoom={13} style={{ height: '100%', width: '100%', minHeight: '300px' }}>
+                                            <MapResizer watch={`${selectedSection}-${activeTrip.status}-detail`} />
                                             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                                             <Marker position={[activeTrip.pickupLatitude, activeTrip.pickupLongitude]} icon={driverIcon}>
                                                 <Popup>Pickup: {activeTrip.pickupLocation}</Popup>

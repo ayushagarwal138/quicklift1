@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { User, LogOut, Settings, Bell, ChevronDown, LogIn, UserPlus, Menu, X } from 'lucide-react';
+import { User, LogOut, Settings, ChevronDown, LogIn, UserPlus, Menu, X } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
+import NotificationBell from './NotificationBell';
 
 const UserHeader = () => {
   const { user, logout } = useAuth();
@@ -82,11 +83,7 @@ const UserHeader = () => {
 
               {user ? (
                 <>
-                  {/* Notifications */}
-                  <button className="btn-icon relative text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200 hover:bg-surface-100 dark:hover:bg-surface-800">
-                    <Bell className="w-5 h-5" />
-                    <span className="absolute top-1.5 right-1.5 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white dark:ring-surface-900"></span>
-                  </button>
+                  <NotificationBell />
 
                   {/* Profile Dropdown */}
                   <div className="relative" ref={dropdownRef}>

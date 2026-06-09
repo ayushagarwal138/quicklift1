@@ -7,6 +7,7 @@ public class AuthResponse {
     private String accessToken;
     private String type = "Bearer";
     private Long id;
+    private Long driverId;
     private String username;
     private String email;
     private List<String> roles;
@@ -55,6 +56,14 @@ public class AuthResponse {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Long getDriverId() {
+        return driverId;
+    }
+
+    public void setDriverId(Long driverId) {
+        this.driverId = driverId;
     }
 
     public String getUsername() {

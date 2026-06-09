@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LogOut, ChevronDown, User, Settings, Bell, Menu, X } from 'lucide-react';
+import { LogOut, ChevronDown, User, Settings, Menu, X } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
+import NotificationBell from './NotificationBell';
 
 const DriverHeader = () => {
   const { user, logout } = useAuth();
@@ -87,10 +88,7 @@ const DriverHeader = () => {
 
               {user && (
                 <>
-                  <button className="btn-icon relative text-surface-400 hover:text-white hover:bg-surface-800">
-                    <Bell className="w-5 h-5" />
-                    <span className="absolute top-1.5 right-1.5 block h-2 w-2 rounded-full bg-amber-400 ring-2 ring-surface-900"></span>
-                  </button>
+                  <NotificationBell dark />
 
                   <div className="relative" ref={dropdownRef}>
                     <button

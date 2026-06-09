@@ -4,6 +4,7 @@ import com.quicklift.backend.model.Driver;
 import com.quicklift.backend.model.DriverStatus;
 import com.quicklift.backend.model.Trip;
 import com.quicklift.backend.model.TripStatus;
+import com.quicklift.backend.model.User;
 import com.quicklift.backend.model.VehicleType;
 import com.quicklift.backend.repository.DriverRepository;
 import com.quicklift.backend.repository.TripRepository;
@@ -15,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Service
@@ -28,6 +30,9 @@ public class TripService {
 
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
+
+    @Autowired
+    private NotificationService notificationService;
 
     @Transactional
     public Trip createTrip(Trip trip) {
@@ -88,10 +93,16 @@ public class TripService {
         driverRepository.save(driver);
 
         Trip updatedTrip = tripRepository.save(trip);
-        // Broadcast trip status update
         messagingTemplate.convertAndSend("/topic/trip/" + tripId + "/status", updatedTrip);
-        // Broadcast to driver
         messagingTemplate.convertAndSend("/topic/driver/" + driverId + "/status", updatedTrip);
+        notificationService.create(
+            trip.getUser(),
+            "TRIP_ACCEPTED",
+            "Ride accepted",
+            driver.getUser().getUsername() + " accepted your ride request.",
+            "/trips/" + tripId + "/confirm",
+            tripId
+        );
         return updatedTrip;
     }
 
@@ -108,11 +119,18 @@ public class TripService {
         trip.setStartedAt(LocalDateTime.now());
 
         Trip updatedTrip = tripRepository.save(trip);
-        // Broadcast trip status update
         messagingTemplate.convertAndSend("/topic/trip/" + tripId + "/status", updatedTrip);
         if (trip.getDriver() != null) {
             messagingTemplate.convertAndSend("/topic/driver/" + trip.getDriver().getId() + "/status", updatedTrip);
         }
+        notificationService.create(
+            trip.getUser(),
+            "TRIP_STARTED",
+            "Trip started",
+            "Your QuickLift trip is now in progress.",
+            "/trips/" + tripId,
+            tripId
+        );
         return updatedTrip;
     }
 
@@ -138,11 +156,18 @@ public class TripService {
         }
 
         Trip updatedTrip = tripRepository.save(trip);
-        // Broadcast trip status update
         messagingTemplate.convertAndSend("/topic/trip/" + tripId + "/status", updatedTrip);
         if (trip.getDriver() != null) {
             messagingTemplate.convertAndSend("/topic/driver/" + trip.getDriver().getId() + "/status", updatedTrip);
         }
+        notificationService.create(
+            trip.getUser(),
+            "TRIP_COMPLETED",
+            "Trip completed",
+            "Your trip is complete. Please finish payment when ready.",
+            trip.isPaid() ? "/history" : "/payment/" + tripId,
+            tripId
+        );
         return updatedTrip;
     }
 
@@ -167,11 +192,26 @@ public class TripService {
         }
 
         Trip updatedTrip = tripRepository.save(trip);
-        // Broadcast trip status update
         messagingTemplate.convertAndSend("/topic/trip/" + tripId + "/status", updatedTrip);
         if (trip.getDriver() != null) {
             messagingTemplate.convertAndSend("/topic/driver/" + trip.getDriver().getId() + "/status", updatedTrip);
+            notificationService.create(
+                trip.getDriver().getUser(),
+                "TRIP_CANCELLED",
+                "Trip cancelled",
+                "A QuickLift trip was cancelled.",
+                "/driver/history",
+                tripId
+            );
         }
+        notificationService.create(
+            trip.getUser(),
+            "TRIP_CANCELLED",
+            "Trip cancelled",
+            "Your QuickLift trip was cancelled.",
+            "/history",
+            tripId
+        );
         return updatedTrip;
     }
 
@@ -204,10 +244,50 @@ public class TripService {
             // Unassign the driver
             trip.setDriver(null);
             tripRepository.save(trip);
-            // Optionally: broadcast update
-            messagingTemplate.convertAndSend("/topic/trip/" + tripId + "/status", trip);
+            messagingTemplate.convertAndSend("/topic/trip/" + tripId + "/status", Map.of(
+                "id", tripId,
+                "status", "REJECTED",
+                "driverId", driverId
+            ));
+            notificationService.create(
+                trip.getUser(),
+                "TRIP_REJECTED",
+                "Driver declined",
+                "The driver declined your request. Please choose another driver.",
+                "/select-driver/" + tripId,
+                tripId
+            );
         }
         return trip;
+    }
+
+    @Transactional
+    public Trip requestExistingTripToDriver(Long tripId, Long driverId, User user) {
+        Trip trip = tripRepository.findById(tripId)
+            .orElseThrow(() -> new RuntimeException("Trip not found"));
+        if (!trip.getUser().getId().equals(user.getId())) {
+            throw new org.springframework.security.access.AccessDeniedException("Cannot request a driver for this trip");
+        }
+        if (trip.getStatus() != TripStatus.REQUESTED) {
+            throw new RuntimeException("Trip is not available for driver requests");
+        }
+        Driver driver = driverRepository.findById(driverId)
+            .orElseThrow(() -> new RuntimeException("Driver not found"));
+        if (driver.getStatus() != DriverStatus.ONLINE) {
+            throw new RuntimeException("Driver is not available");
+        }
+        trip.setDriver(driver);
+        Trip savedTrip = tripRepository.save(trip);
+        messagingTemplate.convertAndSend("/topic/driver/" + driverId + "/requests", savedTrip);
+        notificationService.create(
+            driver.getUser(),
+            "RIDE_REQUEST",
+            "New ride request",
+            user.getUsername() + " requested a QuickLift ride.",
+            "/driver/pending-requests",
+            tripId
+        );
+        return savedTrip;
     }
 
     @Transactional
@@ -228,8 +308,15 @@ public class TripService {
             .orElseThrow(() -> new RuntimeException("Driver not found"));
         trip.setDriver(driver);
         Trip savedTrip = tripRepository.save(trip);
-        // Broadcast new request to driver
         messagingTemplate.convertAndSend("/topic/driver/" + driverId + "/requests", savedTrip);
+        notificationService.create(
+            driver.getUser(),
+            "RIDE_REQUEST",
+            "New ride request",
+            user.getUsername() + " requested a QuickLift ride.",
+            "/driver/pending-requests",
+            savedTrip.getId()
+        );
         return savedTrip;
     }
 
@@ -245,8 +332,15 @@ public class TripService {
         trip.setStatus(TripStatus.REQUESTED);
         trip.setRequestedAt(LocalDateTime.now());
         Trip savedTrip = tripRepository.save(trip);
-        // Notify driver of new trip request
         messagingTemplate.convertAndSend("/topic/driver/" + selectedDriver.getId() + "/requests", savedTrip);
+        notificationService.create(
+            selectedDriver.getUser(),
+            "RIDE_REQUEST",
+            "New ride request",
+            trip.getUser().getUsername() + " requested a QuickLift ride.",
+            "/driver/pending-requests",
+            savedTrip.getId()
+        );
         return savedTrip;
     }
 

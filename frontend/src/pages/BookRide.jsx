@@ -1,28 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Polyline } from 'react-leaflet';
-import L from 'leaflet';
 import { tripsAPI } from '../api/trips';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import UserHeader from '../components/Header';
+import MapResizer from '../components/MapResizer';
+import { configureLeafletIcons, destinationIcon } from '../utils/leafletIcons';
 import { MapPin, Navigation, Car, Loader2, IndianRupee, CreditCard, Banknote, QrCode } from 'lucide-react';
 
-// Fix for default marker icon
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-});
-
-const greenIcon = new L.Icon({
-  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41]
-});
+configureLeafletIcons();
 
 function LocationPicker({ onClick }) {
   useMapEvents({
@@ -64,6 +50,8 @@ const BookRide = () => {
   const [showDestDropdown, setShowDestDropdown] = useState(false);
   const [fareEstimate, setFareEstimate] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const [searchingField, setSearchingField] = useState(null);
+  const [searchError, setSearchError] = useState('');
   const searchTimeout = useRef();
 
   const handleSearch = async (value, type) => {
@@ -77,12 +65,19 @@ const BookRide = () => {
       return;
     }
     searchTimeout.current = setTimeout(async () => {
+      setSearchingField(type);
+      setSearchError('');
       try {
         const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(value)}&limit=5`);
+        if (!res.ok) throw new Error('Search failed');
         const data = await res.json();
         if (type === 'pickup') { setPickupSuggestions(data); setShowPickupDropdown(true); }
         else { setDestSuggestions(data); setShowDestDropdown(true); }
-      } catch {}
+      } catch {
+        setSearchError('Location search is unavailable. You can still click the map to set points.');
+      } finally {
+        setSearchingField(null);
+      }
     }, 400);
   };
 
@@ -125,9 +120,9 @@ const BookRide = () => {
         pickupLatitude: pickupCoords.lat, pickupLongitude: pickupCoords.lng,
         destinationLatitude: destinationCoords.lat, destinationLongitude: destinationCoords.lng,
       };
-      const trip = await tripsAPI.createTrip(tripData);
-      success('Ride booked! Finding drivers...');
-      navigate(`/trips/${trip.id}/select-driver`);
+      const trip = await tripsAPI.bookTrip(tripData);
+      success('Ride details saved. Choose a driver to send the request.');
+      navigate(`/select-driver/${trip.id}`);
     } catch (err) {
       error(err.response?.data?.message || 'Failed to book ride');
     } finally {
@@ -166,10 +161,11 @@ const BookRide = () => {
             ))}
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-6">
+          <div className="grid lg:grid-cols-2 gap-6 items-start">
             {/* Map */}
-            <div className="card overflow-hidden h-[400px] lg:h-auto lg:min-h-[500px]">
+            <div className="card overflow-hidden h-[320px] sm:h-[380px] lg:h-[calc(100vh-12rem)] lg:min-h-[500px] order-2 lg:order-1">
               <MapContainer center={[20.5937, 78.9629]} zoom={5} style={{ height: '100%', width: '100%' }}>
+                <MapResizer watch={`${step}-${pickupCoords?.lat || ''}-${destinationCoords?.lat || ''}`} />
                 <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                 <LocationPicker onClick={(latlng) => {
                   if (!pickupCoords) {
@@ -181,13 +177,13 @@ const BookRide = () => {
                   }
                 }} />
                 {pickupCoords && <Marker position={pickupCoords}><Popup>Pickup</Popup></Marker>}
-                {destinationCoords && <Marker position={destinationCoords} icon={greenIcon}><Popup>Destination</Popup></Marker>}
+                {destinationCoords && <Marker position={destinationCoords} icon={destinationIcon}><Popup>Destination</Popup></Marker>}
                 {pickupCoords && destinationCoords && <Polyline positions={[pickupCoords, destinationCoords]} color="#3366ff" />}
               </MapContainer>
             </div>
 
             {/* Form Panel */}
-            <form className="space-y-6" onSubmit={handleSubmit}>
+            <form className="space-y-6 order-1 lg:order-2" onSubmit={handleSubmit}>
               {/* Step 1: Location */}
               {step === 1 && (
                 <div className="card p-6 space-y-5 animate-fade-in">
@@ -197,6 +193,7 @@ const BookRide = () => {
                     <div className="relative">
                       <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-500" />
                       <input type="text" value={pickupLocation} onChange={(e) => handleSearch(e.target.value, 'pickup')} className="input pl-11" placeholder="Enter pickup address" required />
+                      {searchingField === 'pickup' && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-surface-400" />}
                       {showPickupDropdown && pickupSuggestions.length > 0 && (
                         <div className="absolute z-30 left-0 right-0 mt-1 bg-white dark:bg-surface-800 rounded-xl shadow-elevated border border-surface-200 dark:border-surface-700 max-h-48 overflow-y-auto">
                           {pickupSuggestions.map((s, i) => (
@@ -213,6 +210,7 @@ const BookRide = () => {
                     <div className="relative">
                       <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500" />
                       <input type="text" value={destination} onChange={(e) => handleSearch(e.target.value, 'destination')} className="input pl-11" placeholder="Enter destination address" required />
+                      {searchingField === 'destination' && <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-surface-400" />}
                       {showDestDropdown && destSuggestions.length > 0 && (
                         <div className="absolute z-30 left-0 right-0 mt-1 bg-white dark:bg-surface-800 rounded-xl shadow-elevated border border-surface-200 dark:border-surface-700 max-h-48 overflow-y-auto">
                           {destSuggestions.map((s, i) => (
@@ -224,7 +222,8 @@ const BookRide = () => {
                       )}
                     </div>
                   </div>
-                  <button type="button" onClick={() => setStep(2)} disabled={!pickupLocation || !destination} className="btn-primary w-full">
+                  {searchError && <p className="text-xs text-amber-600 dark:text-amber-400">{searchError}</p>}
+                  <button type="button" onClick={() => setStep(2)} disabled={!pickupCoords || !destinationCoords} className="btn-primary w-full">
                     Continue
                   </button>
                 </div>

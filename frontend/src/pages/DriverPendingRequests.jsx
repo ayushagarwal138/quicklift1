@@ -32,14 +32,14 @@ const DriverPendingRequests = () => {
     }, []);
 
     useEffect(() => {
-        if (!user || user.role !== 'DRIVER') return;
+        if (!user || user.role !== 'DRIVER' || !user.driverId) return;
         const client = new Client({
             webSocketFactory: () => new SockJS(getAuthenticatedWsUrl()),
             connectHeaders: getStompConnectHeaders(),
             reconnectDelay: 5000,
         });
         client.onConnect = () => {
-            client.subscribe(`/topic/driver/${user.id}/requests`, (message) => {
+            client.subscribe(`/topic/driver/${user.driverId}/requests`, () => {
                 fetchRequests();
                 info('New trip request received!');
             });

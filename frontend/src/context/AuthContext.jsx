@@ -16,6 +16,7 @@ const normalizeUser = (data) => {
   const roles = (data?.roles || []).map(r => r.replace(/^ROLE_/, ''));
   return {
     id: data?.id,
+    driverId: data?.driverId,
     username: data?.username,
     email: data?.email,
     firstName: data?.firstName,

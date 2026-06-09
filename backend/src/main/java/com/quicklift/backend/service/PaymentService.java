@@ -17,10 +17,16 @@ import java.util.List;
 public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final TripRepository tripRepository;
+    private final NotificationService notificationService;
 
-    public PaymentService(PaymentRepository paymentRepository, TripRepository tripRepository) {
+    public PaymentService(
+        PaymentRepository paymentRepository,
+        TripRepository tripRepository,
+        NotificationService notificationService
+    ) {
         this.paymentRepository = paymentRepository;
         this.tripRepository = tripRepository;
+        this.notificationService = notificationService;
     }
 
     @Transactional
@@ -53,6 +59,14 @@ public class PaymentService {
         trip.setPaymentMethod(payment.getMethod());
         trip.setPaid(true);
         tripRepository.save(trip);
+        notificationService.create(
+            trip.getUser(),
+            "PAYMENT_SUCCEEDED",
+            "Payment complete",
+            "Your QuickLift payment was completed successfully.",
+            "/history",
+            trip.getId()
+        );
         return savedPayment;
     }
 

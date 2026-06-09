@@ -12,6 +12,7 @@ public class UserResponse {
     private String lastName;
     private String phoneNumber;
     private String profilePictureUrl;
+    private Long driverId;
     private List<String> roles;
 
     public static UserResponse from(User user) {
@@ -41,6 +42,8 @@ public class UserResponse {
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
     public String getProfilePictureUrl() { return profilePictureUrl; }
     public void setProfilePictureUrl(String profilePictureUrl) { this.profilePictureUrl = profilePictureUrl; }
+    public Long getDriverId() { return driverId; }
+    public void setDriverId(Long driverId) { this.driverId = driverId; }
     public List<String> getRoles() { return roles; }
     public void setRoles(List<String> roles) { this.roles = roles; }
 }

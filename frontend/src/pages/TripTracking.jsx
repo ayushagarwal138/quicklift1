@@ -9,14 +9,10 @@ import { getAuthenticatedWsUrl, getStompConnectHeaders } from '../api/ws';
 import { useToast } from '../context/ToastContext';
 import { MapPin, Navigation, User, Send, IndianRupee, Phone } from 'lucide-react';
 import UserHeader from '../components/Header';
+import MapResizer from '../components/MapResizer';
+import { configureLeafletIcons } from '../utils/leafletIcons';
 
-// Fix for default marker icon
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
-});
+configureLeafletIcons();
 
 const driverIcon = new L.Icon({
     iconUrl: 'https://img.icons8.com/ios-filled/50/000000/car.png',
@@ -171,8 +167,9 @@ const TripTracking = () => {
           <div className="grid lg:grid-cols-3 gap-6">
             {/* Map + Chat */}
             <div className="lg:col-span-2 space-y-4">
-              <div className="card overflow-hidden h-[400px]">
+              <div className="card overflow-hidden h-[320px] sm:h-[400px]">
                 <MapContainer bounds={bounds} style={{ height: '100%', width: '100%' }} boundsOptions={{ padding: [50, 50] }}>
+                    <MapResizer watch={`${trip.status}-${driverLocation?.lat || ''}-${driverLocation?.lng || ''}`} />
                     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                     <Marker position={pickupPosition}><Popup>Pickup: {trip.pickupLocation}</Popup></Marker>
                     <Marker position={destinationPosition}><Popup>Destination: {trip.destination}</Popup></Marker>

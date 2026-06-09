@@ -55,12 +55,8 @@ const SelectDriver = () => {
     setWaitingForResponse(true);
     setRejectedByDriver(false);
     try {
-      await tripsAPI.requestToDriver({
-        pickupLocation: trip.pickupLocation, destination: trip.destination,
-        vehicleType: trip.requestedVehicleType, notes: trip.notes || '',
-        pickupLatitude: trip.pickupLatitude, pickupLongitude: trip.pickupLongitude,
-        destinationLatitude: trip.destinationLatitude, destinationLongitude: trip.destinationLongitude,
-      }, driver.id);
+      const updatedTrip = await tripsAPI.requestExistingTripToDriver(trip.id, driver.id);
+      setTrip(updatedTrip);
       setRequestSuccess(driver.id);
     } catch (err) {
       setRequestSuccess(false);

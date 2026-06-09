@@ -116,7 +116,9 @@ public class AuthController {
     @GetMapping("/me")
     public ResponseEntity<UserResponse> me() {
         User user = currentUser();
-        return ResponseEntity.ok(UserResponse.from(user));
+        UserResponse response = UserResponse.from(user);
+        driverRepository.findByUserId(user.getId()).ifPresent(driver -> response.setDriverId(driver.getId()));
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/validate")
@@ -155,6 +157,7 @@ public class AuthController {
         RefreshTokenService.IssuedRefreshToken refreshToken = refreshTokenService.issue(user);
         authCookieService.addRefreshCookie(response, refreshToken.value(), refreshToken.expiresAt());
         AuthResponse authResponse = new AuthResponse(jwt, user.getId(), user.getUsername(), user.getEmail(), List.of(user.getRole().name()));
+        driverRepository.findByUserId(user.getId()).ifPresent(driver -> authResponse.setDriverId(driver.getId()));
         return ResponseEntity.status(status).body(authResponse);
     }
 

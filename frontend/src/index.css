@@ -18,7 +18,7 @@
   }
 
   body {
-    @apply font-sans text-surface-900 dark:text-surface-100 bg-surface-50 dark:bg-surface-900;
+    @apply font-sans text-surface-900 dark:text-surface-100 bg-surface-50 dark:bg-surface-900 overflow-x-hidden;
   }
 
   /* Custom Scrollbar */
@@ -276,4 +276,8 @@
 .leaflet-container {
   @apply rounded-xl z-0;
   font-family: inherit !important;
+}
+
+.leaflet-destination-marker {
+  filter: hue-rotate(95deg) saturate(1.3);
 }

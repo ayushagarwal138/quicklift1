@@ -49,4 +49,9 @@ export const driverAPI = {
     const response = await api.get(`${API_PREFIX}/drivers/available`);
     return response.data;
   },
+
+  getSummary: async () => {
+    const response = await api.get(`${API_PREFIX}/drivers/summary`);
+    return response.data;
+  },
 };

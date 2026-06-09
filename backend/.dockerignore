@@ -1,0 +1,10 @@
+target/
+!target/quicklift-backend-0.0.1-SNAPSHOT.jar
+.env
+.env.*
+*.log
+.DS_Store
+.git
+.github
+.idea
+.vscode

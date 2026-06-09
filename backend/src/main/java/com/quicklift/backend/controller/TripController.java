@@ -91,7 +91,7 @@ public class TripController {
             trip.setFare(fare);
             trip.setPaymentMethod(tripRequest.getPaymentMethod());
 
-            Trip createdTrip = tripService.createTripAndAssignDriver(trip);
+            Trip createdTrip = tripService.createTrip(trip);
             return ResponseEntity.ok(createdTrip);
         } catch (org.springframework.security.access.AccessDeniedException e) {
             throw e;
@@ -172,6 +172,18 @@ public class TripController {
                 return ResponseEntity.badRequest().body("User not found");
             }
             Trip trip = tripService.createTripForDriver(tripRequest, user.get(), driverId);
+            return ResponseEntity.ok(trip);
+        } catch (org.springframework.security.access.AccessDeniedException e) {
+            throw e;
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{id}/request-driver")
+    public ResponseEntity<?> requestExistingTripToDriver(@PathVariable Long id, @RequestParam Long driverId) {
+        try {
+            Trip trip = tripService.requestExistingTripToDriver(id, driverId, currentUser());
             return ResponseEntity.ok(trip);
         } catch (org.springframework.security.access.AccessDeniedException e) {
             throw e;

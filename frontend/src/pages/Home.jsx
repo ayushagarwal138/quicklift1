@@ -1,7 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { MapPin, Navigation, Clock, Shield, Star, Car, ArrowRight, Zap, CheckCircle2 } from 'lucide-react';
-import UserHeader from '../components/Header';
+import { MapPin, Navigation, Clock, Shield, Star, ArrowRight, Zap } from 'lucide-react';
 
 const features = [
   { icon: Zap, title: 'Lightning Fast', desc: 'Book a ride in seconds with our optimized booking system' },
@@ -26,20 +25,20 @@ const Home = () => {
   return (
     <div className="min-h-screen bg-surface-50 dark:bg-surface-950 font-sans selection:bg-brand-500/20 selection:text-brand-900 dark:selection:text-brand-100">
       {/* Navigation */}
-      <nav className="fixed top-0 inset-x-0 z-50 bg-white/80 dark:bg-surface-900/80 backdrop-blur-xl border-b border-surface-200/60 dark:border-surface-700/40 transition-colors duration-200">
+      <nav className="fixed top-0 inset-x-0 z-50 bg-white/90 dark:bg-surface-900/90 backdrop-blur-xl border-b border-surface-200/60 dark:border-surface-700/40 transition-colors duration-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-20">
+          <div className="flex justify-between items-center h-16 sm:h-20">
             <Link to="/" className="flex items-center gap-2 group">
-              <img src="/QuickLift_logo(1).png" alt="QuickLift Logo" className="w-10 h-10 rounded-xl transition-transform duration-300 group-hover:scale-105 shadow-md" />
-              <span className="text-2xl font-bold text-surface-900 dark:text-white tracking-tight">
+              <img src="/QuickLift_logo(1).png" alt="QuickLift Logo" className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl transition-transform duration-300 group-hover:scale-105 shadow-md" />
+              <span className="text-xl sm:text-2xl font-bold text-surface-900 dark:text-white tracking-tight">
                 Quick<span className="text-brand-600 dark:text-brand-400">Lift</span>
               </span>
             </Link>
-            <div className="flex items-center gap-4 sm:gap-6">
+            <div className="flex items-center gap-2 sm:gap-6">
               <Link to="/login" className="text-sm font-semibold text-surface-600 dark:text-surface-300 hover:text-surface-900 dark:hover:text-white transition-colors">
                 Sign in
               </Link>
-              <Link to="/register" className="btn-primary">
+              <Link to="/register" className="btn-primary btn-sm sm:px-6 sm:py-3 whitespace-nowrap">
                 Get Started
               </Link>
             </div>
@@ -48,36 +47,33 @@ const Home = () => {
       </nav>
 
       {/* Hero Section */}
-      <div className="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
+      <div className="relative pt-24 sm:pt-32 pb-14 sm:pb-20 lg:pt-44 lg:pb-28 overflow-hidden">
         {/* Background Gradients */}
         <div className="absolute inset-0 bg-gradient-to-br from-brand-50 via-white to-surface-50 dark:from-surface-950 dark:via-surface-900 dark:to-surface-950" />
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[500px] opacity-30 dark:opacity-20 pointer-events-none">
-          <div className="absolute inset-0 bg-gradient-to-r from-brand-400 to-indigo-500 blur-[100px] rounded-full mix-blend-multiply dark:mix-blend-screen animate-pulse-slow" />
-        </div>
         
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="lg:grid lg:grid-cols-12 lg:gap-16 items-center">
+          <div className="lg:grid lg:grid-cols-12 lg:gap-12 xl:gap-16 items-center">
             {/* Hero Text */}
-            <div className="lg:col-span-6 text-center lg:text-left mb-16 lg:mb-0">
+            <div className="lg:col-span-6 text-center lg:text-left mb-10 sm:mb-14 lg:mb-0">
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-50 dark:bg-brand-900/30 text-brand-700 dark:text-brand-300 text-sm font-semibold mb-6 animate-fade-in-down border border-brand-200/50 dark:border-brand-700/50">
                 <span className="flex h-2 w-2 rounded-full bg-brand-500"></span>
                 Now available in your city
               </div>
-              <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold text-surface-900 dark:text-white tracking-tight leading-[1.1] mb-6 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+              <h1 className="text-3xl sm:text-5xl lg:text-6xl xl:text-7xl font-extrabold text-surface-900 dark:text-white tracking-tight leading-[1.12] mb-5 sm:mb-6 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
                 Your journey,<br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-indigo-600 dark:from-brand-400 dark:to-indigo-400">
                   elevated.
                 </span>
               </h1>
-              <p className="text-lg sm:text-xl text-surface-600 dark:text-surface-400 mb-10 max-w-2xl mx-auto lg:mx-0 animate-fade-in-up leading-relaxed" style={{ animationDelay: '200ms' }}>
+              <p className="text-base sm:text-xl text-surface-600 dark:text-surface-400 mb-8 sm:mb-10 max-w-2xl mx-auto lg:mx-0 animate-fade-in-up leading-relaxed" style={{ animationDelay: '200ms' }}>
                 Experience the next generation of ride-sharing. Fast pickups, premium vehicles, and professional drivers at your fingertips.
               </p>
               <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start animate-fade-in-up" style={{ animationDelay: '300ms' }}>
-                <Link to="/book" className="btn-primary btn-lg w-full sm:w-auto group text-base px-8">
+                <Link to="/book" className="btn-primary w-full sm:w-auto group text-base sm:text-lg px-6 sm:px-8 sm:py-4">
                   Book a Ride
                   <ArrowRight className="w-5 h-5 ml-2 transition-transform group-hover:translate-x-1" />
                 </Link>
-                <Link to="/register" className="btn-secondary btn-lg w-full sm:w-auto text-base px-8">
+                <Link to="/register" className="btn-secondary w-full sm:w-auto text-base sm:text-lg px-6 sm:px-8 sm:py-4">
                   Become a Driver
                 </Link>
               </div>
@@ -85,15 +81,15 @@ const Home = () => {
 
             {/* Hero Image/Mockup */}
             <div className="lg:col-span-6 relative animate-fade-in lg:animate-slide-in-right" style={{ animationDelay: '400ms' }}>
-              <div className="relative rounded-[2.5rem] bg-white dark:bg-surface-800 p-4 shadow-elevated border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm transform rotate-[-2deg] hover:rotate-0 transition-transform duration-500">
+              <div className="relative rounded-2xl bg-white dark:bg-surface-800 p-2 sm:p-4 shadow-elevated border border-surface-200/50 dark:border-surface-700/50 backdrop-blur-sm transform lg:rotate-[-2deg] lg:hover:rotate-0 transition-transform duration-500">
                 <img 
                   src="https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=1200" 
                   alt="QuickLift App" 
-                  className="rounded-[2rem] object-cover w-full h-[300px] sm:h-[400px] lg:h-[500px]"
+                  className="rounded-xl object-cover w-full h-[240px] sm:h-[400px] lg:h-[500px]"
                 />
                 
                 {/* Floating Cards */}
-                <div className="absolute left-2 sm:-left-6 lg:-left-12 top-4 sm:top-10 glass p-3 sm:p-4 rounded-2xl shadow-xl animate-bounce-subtle z-10">
+                <div className="hidden sm:block absolute sm:-left-6 lg:-left-8 top-10 glass p-4 rounded-xl shadow-xl animate-bounce-subtle z-10">
                   <div className="flex items-center gap-3 sm:gap-4">
                     <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-100 dark:bg-emerald-900/40 rounded-full flex items-center justify-center">
                       <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 dark:text-emerald-400" />
@@ -105,7 +101,7 @@ const Home = () => {
                   </div>
                 </div>
 
-                <div className="absolute right-2 sm:-right-6 lg:-right-8 bottom-4 sm:bottom-10 glass p-3 sm:p-4 rounded-2xl shadow-xl animate-bounce-subtle z-10" style={{ animationDelay: '1s' }}>
+                <div className="hidden sm:block absolute sm:-right-4 lg:-right-6 bottom-10 glass p-4 rounded-xl shadow-xl animate-bounce-subtle z-10" style={{ animationDelay: '1s' }}>
                   <div className="flex items-center gap-3 sm:gap-4">
                     <div className="w-10 h-10 sm:w-12 sm:h-12 bg-brand-100 dark:bg-brand-900/40 rounded-full flex items-center justify-center">
                       <Star className="w-5 h-5 sm:w-6 sm:h-6 text-brand-600 dark:text-brand-400" />
@@ -125,7 +121,7 @@ const Home = () => {
       {/* Stats Section */}
       <div className="border-y border-surface-200 dark:border-surface-800 bg-white dark:bg-surface-900">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-5 sm:gap-8 text-center">
             {[
               { label: 'Active Users', value: '500K+' },
               { label: 'Cities Covered', value: '120+' },
@@ -133,8 +129,8 @@ const Home = () => {
               { label: 'App Rating', value: '4.9/5' }
             ].map((stat, i) => (
               <div key={i}>
-                <p className="text-3xl sm:text-4xl font-extrabold text-surface-900 dark:text-white mb-1">{stat.value}</p>
-                <p className="text-sm font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wide">{stat.label}</p>
+                <p className="text-2xl sm:text-4xl font-extrabold text-surface-900 dark:text-white mb-1">{stat.value}</p>
+                <p className="text-xs sm:text-sm font-medium text-surface-500 dark:text-surface-400 uppercase tracking-wide">{stat.label}</p>
               </div>
             ))}
           </div>
@@ -142,7 +138,7 @@ const Home = () => {
       </div>
 
       {/* Features Section */}
-      <div className="py-24 bg-surface-50 dark:bg-surface-950">
+      <div className="py-16 sm:py-24 bg-surface-50 dark:bg-surface-950">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-brand-600 dark:text-brand-400 font-semibold tracking-wide uppercase text-sm mb-3">Why Choose Us</h2>
@@ -168,7 +164,7 @@ const Home = () => {
       </div>
 
       {/* How it Works Section */}
-      <div className="py-24 bg-white dark:bg-surface-900 border-t border-surface-200 dark:border-surface-800 overflow-hidden">
+      <div className="py-16 sm:py-24 bg-white dark:bg-surface-900 border-t border-surface-200 dark:border-surface-800 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
@@ -198,7 +194,7 @@ const Home = () => {
               <img 
                 src="https://images.unsplash.com/photo-1556122071-e404eaedb77f?auto=format&fit=crop&q=80&w=800" 
                 alt="Passenger in car" 
-                className="relative rounded-[3rem] shadow-2xl object-cover h-[350px] sm:h-[450px] lg:h-[600px] w-full"
+                className="relative rounded-2xl shadow-2xl object-cover h-[280px] sm:h-[450px] lg:h-[600px] w-full"
               />
             </div>
           </div>
@@ -206,7 +202,7 @@ const Home = () => {
       </div>
 
       {/* Testimonials */}
-      <div className="py-24 bg-surface-50 dark:bg-surface-950 border-t border-surface-200 dark:border-surface-800">
+      <div className="py-16 sm:py-24 bg-surface-50 dark:bg-surface-950 border-t border-surface-200 dark:border-surface-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-surface-900 dark:text-white mb-4">Loved by thousands</h2>
@@ -233,7 +229,7 @@ const Home = () => {
       </div>
 
       {/* CTA Section */}
-      <div className="relative py-24 overflow-hidden">
+      <div className="relative py-16 sm:py-24 overflow-hidden">
         <div className="absolute inset-0 bg-brand-900" />
         <div className="absolute inset-0 bg-hero-pattern opacity-10" />
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">

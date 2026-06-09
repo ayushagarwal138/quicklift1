@@ -50,6 +50,13 @@ export const tripsAPI = {
     return response.data;
   },
 
+  requestExistingTripToDriver: async (tripId, driverId) => {
+    const response = await api.post(`${API_PREFIX}/trips/${tripId}/request-driver`, null, {
+      params: { driverId },
+    });
+    return response.data;
+  },
+
   payForTrip: async (tripId, method = 'CASH') => {
     const response = await api.post(`${API_PREFIX}/payments`, {
       tripId,
