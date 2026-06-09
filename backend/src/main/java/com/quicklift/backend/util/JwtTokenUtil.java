@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
@@ -18,10 +19,10 @@ public class JwtTokenUtil {
     @Value("${jwt.secret}")
     private String secret;
 
-    @Value("${jwt.expiration}")
-    private Long expiration;
+    @Value("${jwt.access-token-expiration-seconds:900}")
+    private Long accessTokenExpirationSeconds;
 
-    private SecretKey getSigningKey() {
+    public SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
@@ -60,20 +61,33 @@ public class JwtTokenUtil {
         return createToken(claims, username);
     }
 
-    public String generateToken(String username, java.util.List<String> roles) {
+    public String generateToken(String username, List<String> roles) {
         Map<String, Object> claims = new HashMap<>();
         claims.put("roles", roles);
         return createToken(claims, username);
     }
 
     private String createToken(Map<String, Object> claims, String subject) {
+        claims.putIfAbsent("iss", "quicklift");
         return Jwts.builder()
                 .setClaims(claims)
                 .setSubject(subject)
                 .setIssuedAt(new Date(System.currentTimeMillis()))
-                .setExpiration(new Date(System.currentTimeMillis() + expiration * 1000))
+                .setExpiration(new Date(System.currentTimeMillis() + accessTokenExpirationSeconds * 1000))
                 .signWith(getSigningKey(), SignatureAlgorithm.HS256)
                 .compact();
+    }
+
+    public List<String> extractRoles(String token) {
+        Claims claims = extractAllClaims(token);
+        Object roles = claims.get("roles");
+        if (roles instanceof List<?> roleList) {
+            return roleList.stream().map(Object::toString).toList();
+        }
+        if (roles instanceof String role) {
+            return List.of(role);
+        }
+        return List.of();
     }
 
     public Boolean validateToken(String token, UserDetails userDetails) {

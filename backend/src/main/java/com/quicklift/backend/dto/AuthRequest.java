@@ -1,12 +1,14 @@
 package com.quicklift.backend.dto;
 
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 public class AuthRequest {
     @NotBlank(message = "Username is required")
     private String username;
 
     @NotBlank(message = "Password is required")
+    @Size(min = 10, message = "Password must be at least 10 characters")
     private String password;
 
     public AuthRequest() {}

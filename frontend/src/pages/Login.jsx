@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Car, Eye, EyeOff } from 'lucide-react';
+import { authAPI } from '../api/auth';
 
 const Login = () => {
   const [formData, setFormData] = useState({
@@ -126,6 +127,21 @@ const Login = () => {
               {loading ? 'Signing in...' : 'Sign in'}
             </button>
           </div>
+
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-gray-200" />
+            <span className="text-xs font-medium uppercase text-gray-500">or</span>
+            <div className="h-px flex-1 bg-gray-200" />
+          </div>
+
+          <button
+            type="button"
+            onClick={() => { window.location.href = authAPI.googleStartUrl(); }}
+            className="w-full flex items-center justify-center gap-3 py-2 px-4 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          >
+            <span className="font-bold text-blue-600">G</span>
+            Continue with Google
+          </button>
 
           <div className="text-center">
             <p className="text-sm text-gray-600">

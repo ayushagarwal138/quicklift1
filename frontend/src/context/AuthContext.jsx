@@ -1,6 +1,6 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { jwtDecode } from 'jwt-decode';
+import React, { createContext, useContext, useEffect, useState } from 'react';
 import { authAPI } from '../api/auth';
+import { clearAccessToken, setAccessToken } from '../api/axios';
 
 const AuthContext = createContext();
 
@@ -12,6 +12,19 @@ export const useAuth = () => {
   return context;
 };
 
+const normalizeUser = (data) => {
+  const roles = data?.roles || [];
+  return {
+    id: data?.id,
+    username: data?.username,
+    email: data?.email,
+    firstName: data?.firstName,
+    lastName: data?.lastName,
+    roles,
+    role: roles[0],
+  };
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -19,57 +32,39 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const savedUser = localStorage.getItem('user');
-        console.log('[AuthProvider] Initializing. token:', token, 'savedUser:', savedUser);
-        if (token && savedUser) {
-          setUser(JSON.parse(savedUser));
+        const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+        const oauthToken = hashParams.get('accessToken');
+        if (oauthToken) {
+          setAccessToken(oauthToken);
+          window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        } else {
+          const refreshResponse = await authAPI.refresh();
+          setAccessToken(refreshResponse.accessToken || refreshResponse.token);
         }
-      } catch (error) {
-        console.error('Error initializing auth:', error);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+
+        const me = await authAPI.me();
+        setUser(normalizeUser(me));
+      } catch {
+        clearAccessToken();
+        setUser(null);
       } finally {
         setLoading(false);
       }
     };
+
     initializeAuth();
   }, []);
-
-  useEffect(() => {
-    console.log('[AuthProvider] user state changed:', user);
-  }, [user]);
 
   const login = async (username, password) => {
     try {
       const response = await authAPI.login({ username, password });
-      console.log('[AuthProvider] login response:', response);
-      const token = response.token;
-      const decodedToken = jwtDecode(token);
-
-      // Always set roles as an array
-      const roles = decodedToken.roles
-        ? Array.isArray(decodedToken.roles)
-          ? decodedToken.roles
-          : [decodedToken.roles]
-        : decodedToken.role
-        ? [decodedToken.role]
-        : [];
-
-      const userData = {
-        username: decodedToken.sub,
-        roles,
-        email: response.email,
-      };
-
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(userData));
-      setUser(userData);
+      setAccessToken(response.accessToken || response.token);
+      setUser(normalizeUser(response));
       return { success: true };
     } catch (error) {
       return {
         success: false,
-        error: error.response?.data || 'Login failed',
+        error: error.response?.data?.message || error.response?.data || 'Login failed',
       };
     }
   };
@@ -77,41 +72,26 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       const response = await authAPI.register(userData);
-      console.log('[AuthProvider] register response:', response);
-      const token = response.token;
-      const decodedToken = jwtDecode(token);
-
-      // Always set roles as an array
-      const roles = decodedToken.roles
-        ? Array.isArray(decodedToken.roles)
-          ? decodedToken.roles
-          : [decodedToken.roles]
-        : decodedToken.role
-        ? [decodedToken.role]
-        : [];
-
-      const newUserData = {
-        username: decodedToken.sub,
-        roles,
-        email: response.email,
-      };
-
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(newUserData));
-      setUser(newUserData);
+      setAccessToken(response.accessToken || response.token);
+      setUser(normalizeUser(response));
       return { success: true };
     } catch (error) {
       return {
         success: false,
-        error: error.response?.data || 'Registration failed',
+        error: error.response?.data?.message || error.response?.data || 'Registration failed',
       };
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    setUser(null);
+  const logout = async () => {
+    try {
+      await authAPI.logout();
+    } catch {
+      // Logout should clear local state even if the network request fails.
+    } finally {
+      clearAccessToken();
+      setUser(null);
+    }
   };
 
   const value = {
@@ -120,12 +100,8 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     loading,
-    isAuthenticated: !!user
+    isAuthenticated: !!user,
   };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
-}; 
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+};

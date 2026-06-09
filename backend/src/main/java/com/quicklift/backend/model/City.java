@@ -3,11 +3,16 @@ package com.quicklift.backend.model;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.DecimalMax;
 
 import java.math.BigDecimal;
 
 @Entity
-@Table(name = "cities")
+@Table(name = "cities", indexes = {
+    @Index(name = "idx_cities_name", columnList = "name"),
+    @Index(name = "idx_cities_state", columnList = "state"),
+    @Index(name = "idx_cities_state_code", columnList = "stateCode")
+})
 public class City {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -22,10 +27,12 @@ public class City {
     @NotNull
     private String stateCode;
 
-    @DecimalMin("0.0")
+    @DecimalMin("-90.0")
+    @DecimalMax("90.0")
     private BigDecimal latitude;
 
-    @DecimalMin("0.0")
+    @DecimalMin("-180.0")
+    @DecimalMax("180.0")
     private BigDecimal longitude;
 
     private String timezone;

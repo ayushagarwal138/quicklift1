@@ -131,9 +131,30 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
-                <Route path="/driver/pending-requests" element={<DriverPendingRequests />} />
-                <Route path="/driver/history" element={<DriverHistory />} />
-                <Route path="/driver/earnings" element={<DriverEarnings />} />
+                <Route
+                  path="/driver/pending-requests"
+                  element={
+                    <ProtectedRoute roles={['DRIVER']}>
+                      <DriverPendingRequests />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/driver/history"
+                  element={
+                    <ProtectedRoute roles={['DRIVER']}>
+                      <DriverHistory />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/driver/earnings"
+                  element={
+                    <ProtectedRoute roles={['DRIVER']}>
+                      <DriverEarnings />
+                    </ProtectedRoute>
+                  }
+                />
               </Routes>
             </main>
           </div>

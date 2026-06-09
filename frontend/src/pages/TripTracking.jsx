@@ -5,6 +5,7 @@ import L from 'leaflet';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { tripsAPI } from '../api/trips';
+import { getAuthenticatedWsUrl, getStompConnectHeaders } from '../api/ws';
 import { useToast } from '../context/ToastContext';
 import { Car, MapPin, Navigation, User, CheckCircle, Clock, Send } from 'lucide-react';
 
@@ -57,10 +58,11 @@ const TripTracking = () => {
     fetchTripData();
     
     // Setup WebSocket connection
-    const socketFactory = () => new SockJS(import.meta.env.VITE_WS_BASE_URL);
+    const socketFactory = () => new SockJS(getAuthenticatedWsUrl());
     
     const client = new Client({
         webSocketFactory: socketFactory,
+        connectHeaders: getStompConnectHeaders(),
         debug: (str) => {
             console.log(new Date(), str);
         },

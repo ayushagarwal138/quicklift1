@@ -3,16 +3,24 @@ package com.quicklift.backend.model;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.DecimalMax;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "trips")
+@Table(name = "trips", indexes = {
+    @Index(name = "idx_trips_user_requested", columnList = "user_id, requested_at"),
+    @Index(name = "idx_trips_driver_status", columnList = "driver_id, status"),
+    @Index(name = "idx_trips_status_requested", columnList = "status, requested_at")
+})
 public class Trip {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Version
+    private Long version;
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
@@ -28,16 +36,20 @@ public class Trip {
     @NotNull
     private String destination;
 
-    @DecimalMin("0.0")
+    @DecimalMin("-90.0")
+    @DecimalMax("90.0")
     private BigDecimal pickupLatitude;
 
-    @DecimalMin("0.0")
+    @DecimalMin("-180.0")
+    @DecimalMax("180.0")
     private BigDecimal pickupLongitude;
 
-    @DecimalMin("0.0")
+    @DecimalMin("-90.0")
+    @DecimalMax("90.0")
     private BigDecimal destinationLatitude;
 
-    @DecimalMin("0.0")
+    @DecimalMin("-180.0")
+    @DecimalMax("180.0")
     private BigDecimal destinationLongitude;
 
     @NotNull
@@ -62,6 +74,7 @@ public class Trip {
     private BigDecimal rating;
     private String review;
 
+    @Deprecated
     private boolean paid = false;
 
     private String paymentMethod;
@@ -87,6 +100,14 @@ public class Trip {
 
     public void setId(Long id) {
         this.id = id;
+    }
+
+    public Long getVersion() {
+        return version;
+    }
+
+    public void setVersion(Long version) {
+        this.version = version;
     }
 
     public User getUser() {

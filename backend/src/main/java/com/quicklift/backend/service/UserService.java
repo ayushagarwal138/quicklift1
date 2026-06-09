@@ -25,12 +25,16 @@ public class UserService implements UserDetailsService {
     private PasswordEncoder passwordEncoder;
 
     public User createUser(User user, UserRole role) {
-        if (userRepository.existsByUsername(user.getUsername())) {
+        String normalizedUsername = normalize(user.getUsername());
+        String normalizedEmail = normalize(user.getEmail());
+        if (userRepository.existsByNormalizedUsername(normalizedUsername)) {
             throw new RuntimeException("Username already exists");
         }
-        if (userRepository.existsByEmail(user.getEmail())) {
+        if (userRepository.existsByNormalizedEmail(normalizedEmail)) {
             throw new RuntimeException("Email already exists");
         }
+        user.setUsername(user.getUsername().trim());
+        user.setEmail(user.getEmail().trim());
         user.setPassword(passwordEncoder.encode(user.getPassword()));
         user.setRole(role);
         return userRepository.save(user);
@@ -45,11 +49,11 @@ public class UserService implements UserDetailsService {
     }
 
     public Optional<User> findByUsername(String username) {
-        return userRepository.findByUsername(username);
+        return userRepository.findByNormalizedUsername(normalize(username));
     }
 
     public Optional<User> findByEmail(String email) {
-        return userRepository.findByEmail(email);
+        return userRepository.findByNormalizedEmail(normalize(email));
     }
 
     public Optional<User> findById(Long id) {
@@ -69,11 +73,11 @@ public class UserService implements UserDetailsService {
     }
 
     public boolean existsByUsername(String username) {
-        return userRepository.existsByUsername(username);
+        return userRepository.existsByNormalizedUsername(normalize(username));
     }
 
     public boolean existsByEmail(String email) {
-        return userRepository.existsByEmail(email);
+        return userRepository.existsByNormalizedEmail(normalize(email));
     }
 
     @Override
@@ -83,7 +87,11 @@ public class UserService implements UserDetailsService {
         return new org.springframework.security.core.userdetails.User(
                 user.getUsername(),
                 user.getPassword(),
-                Collections.singletonList(new SimpleGrantedAuthority(user.getRole().name()))
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()))
         );
+    }
+
+    private String normalize(String value) {
+        return value == null ? "" : value.trim().toLowerCase();
     }
 } 

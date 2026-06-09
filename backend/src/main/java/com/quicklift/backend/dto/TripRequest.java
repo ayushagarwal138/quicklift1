@@ -1,32 +1,48 @@
 package com.quicklift.backend.dto;
 
 import com.quicklift.backend.model.VehicleType;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 
 public class TripRequest {
     @NotBlank(message = "Pickup location is required")
+    @Size(max = 255)
     private String pickupLocation;
     
     @NotBlank(message = "Destination is required")
+    @Size(max = 255)
     private String destination;
     
+    @DecimalMin("-90.0")
+    @DecimalMax("90.0")
     private BigDecimal pickupLatitude;
     
+    @DecimalMin("-180.0")
+    @DecimalMax("180.0")
     private BigDecimal pickupLongitude;
     
+    @DecimalMin("-90.0")
+    @DecimalMax("90.0")
     private BigDecimal destinationLatitude;
     
+    @DecimalMin("-180.0")
+    @DecimalMax("180.0")
     private BigDecimal destinationLongitude;
     
     @NotNull(message = "Vehicle type is required")
     private VehicleType vehicleType;
     
+    @Size(max = 500)
     private String notes;
     
+    @DecimalMin("0.00")
     private BigDecimal tolls;
     
+    @Size(max = 32)
     private String paymentMethod;
     
     // Constructors

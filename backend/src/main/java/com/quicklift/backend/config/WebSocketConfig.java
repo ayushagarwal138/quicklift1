@@ -1,6 +1,7 @@
 package com.quicklift.backend.config;
 
 import org.springframework.context.annotation.Configuration;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.messaging.simp.config.MessageBrokerRegistry;
 import org.springframework.web.socket.config.annotation.EnableWebSocketMessageBroker;
 import org.springframework.web.socket.config.annotation.StompEndpointRegistry;
@@ -34,6 +35,9 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Autowired
     private JwtTokenUtil jwtTokenUtil;
 
+    @Value("${app.cors.allowed-origins:http://localhost:5173,http://localhost:3000}")
+    private String allowedOrigins;
+
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
         // Topic for broadcasting messages from server to clients
@@ -46,7 +50,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     public void registerStompEndpoints(StompEndpointRegistry registry) {
         // The endpoint for WebSocket connections
         registry.addEndpoint("/ws")
-                .setAllowedOrigins("http://localhost:5173", "http://localhost:3000", "https://quicklift.netlify.app")
+                .setAllowedOrigins(allowedOrigins.split(","))
                 .addInterceptors(new JwtHandshakeInterceptor())
                 .withSockJS();
     }
@@ -66,22 +70,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                         if (username != null && jwtTokenUtil.validateToken(jwt)) {
                             // Extract roles from JWT
                             List<GrantedAuthority> authorities = new ArrayList<>();
-                            try {
-                                Claims claims = io.jsonwebtoken.Jwts.parserBuilder()
-                                        .setSigningKey(jwtTokenUtil.getClass().getDeclaredField("secret").get(jwtTokenUtil).toString().getBytes())
-                                        .build()
-                                        .parseClaimsJws(jwt)
-                                        .getBody();
-                                Object rolesObj = claims.get("roles");
-                                if (rolesObj instanceof List rolesList) {
-                                    for (Object role : rolesList) {
-                                        authorities.add(new SimpleGrantedAuthority("ROLE_" + role.toString()));
-                                    }
-                                } else if (rolesObj instanceof String roleStr) {
-                                    authorities.add(new SimpleGrantedAuthority("ROLE_" + roleStr));
-                                }
-                            } catch (Exception e) {
-                                // fallback: no roles
+                            for (String role : jwtTokenUtil.extractRoles(jwt)) {
+                                authorities.add(new SimpleGrantedAuthority("ROLE_" + role));
                             }
                             UsernamePasswordAuthenticationToken authentication =
                                     new UsernamePasswordAuthenticationToken(username, null, authorities);
@@ -103,6 +93,12 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
             String authHeader = request.getHeaders().getFirst("Authorization");
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 attributes.put("Authorization", authHeader);
+            } else if (request.getURI().getQuery() != null) {
+                for (String queryPart : request.getURI().getQuery().split("&")) {
+                    if (queryPart.startsWith("access_token=")) {
+                        attributes.put("Authorization", "Bearer " + queryPart.substring("access_token=".length()));
+                    }
+                }
             }
             return true;
         }

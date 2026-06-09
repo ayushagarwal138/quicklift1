@@ -17,7 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/locations")
+@RequestMapping({"/api/v1/locations", "/api/locations"})
 public class LocationController {
 
     private static final Logger logger = LoggerFactory.getLogger(LocationController.class);

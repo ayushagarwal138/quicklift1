@@ -14,7 +14,7 @@ public class UserRegistrationRequest {
     private String email;
     
     @NotBlank(message = "Password is required")
-    @Size(min = 6, message = "Password must be at least 6 characters")
+    @Size(min = 10, message = "Password must be at least 10 characters")
     private String password;
     
     @NotBlank(message = "First name is required")
@@ -28,13 +28,19 @@ public class UserRegistrationRequest {
     @Size(max = 20, message = "Phone number must not exceed 20 characters")
     private String phoneNumber;
     
+    @Size(max = 20)
     private String role;
     
     // Driver-specific fields
+    @Size(max = 80)
     private String licenseNumber;
+    @Size(max = 30)
     private String vehicleType;
+    @Size(max = 80)
     private String vehicleModel;
+    @Size(max = 40)
     private String vehicleColor;
+    @Size(max = 30)
     private String licensePlate;
     
     // Constructors

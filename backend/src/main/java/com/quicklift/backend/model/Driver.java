@@ -10,17 +10,24 @@ import java.util.HashSet;
 import java.util.Set;
 
 @Entity
-@Table(name = "drivers")
+@Table(name = "drivers", indexes = {
+    @Index(name = "idx_drivers_user_id", columnList = "user_id"),
+    @Index(name = "idx_drivers_status_vehicle", columnList = "status, vehicle_type")
+})
 public class Driver {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Version
+    private Long version;
     
     @OneToOne
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id", nullable = false, unique = true)
     private User user;
     
     @NotBlank
+    @Column(unique = true, nullable = false)
     private String licenseNumber;
     
     @NotNull
@@ -34,6 +41,7 @@ public class Driver {
     private String vehicleColor;
     
     @NotBlank
+    @Column(unique = true, nullable = false)
     private String licensePlate;
     
     @NotNull
@@ -72,6 +80,9 @@ public class Driver {
     // Getters and Setters
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
     
     public User getUser() { return user; }
     public void setUser(User user) { this.user = user; }

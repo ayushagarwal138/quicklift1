@@ -5,6 +5,7 @@ import { driverAPI } from '../api/driver';
 import { useToast } from '../context/ToastContext';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+import { getAuthenticatedWsUrl, getStompConnectHeaders } from '../api/ws';
 
 const SelectDriver = () => {
   const { tripId } = useParams();
@@ -41,9 +42,10 @@ const SelectDriver = () => {
 
   useEffect(() => {
     if (!tripId) return;
-    const socketFactory = () => new SockJS(import.meta.env.VITE_WS_BASE_URL);
+    const socketFactory = () => new SockJS(getAuthenticatedWsUrl());
     const client = new Client({
       webSocketFactory: socketFactory,
+      connectHeaders: getStompConnectHeaders(),
       debug: () => {},
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,

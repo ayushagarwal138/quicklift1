@@ -20,7 +20,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/driver")
+@RequestMapping({"/api/v1/drivers", "/api/driver"})
 public class DriverController {
 
     @Autowired
@@ -41,8 +41,12 @@ public class DriverController {
 
     @GetMapping("/available-trips")
     public ResponseEntity<List<Trip>> getAvailableTrips() {
-        // In a real app, you might want to filter by proximity to the driver
-        List<Trip> availableTrips = tripService.findByStatus(TripStatus.REQUESTED);
+        User user = getAuthenticatedUser();
+        Driver driver = driverRepository.findByUserId(user.getId())
+            .orElseThrow(() -> new RuntimeException("Driver profile not found for the authenticated user."));
+        List<Trip> availableTrips = tripService.findByStatus(TripStatus.REQUESTED).stream()
+            .filter(trip -> trip.getDriver() == null || trip.getDriver().getId().equals(driver.getId()))
+            .collect(Collectors.toList());
         return ResponseEntity.ok(availableTrips);
     }
 
@@ -55,6 +59,8 @@ public class DriverController {
 
             Trip acceptedTrip = tripService.acceptTrip(tripId, driver.getId());
             return ResponseEntity.ok(acceptedTrip);
+        } catch (org.springframework.security.access.AccessDeniedException e) {
+            throw e;
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -63,8 +69,17 @@ public class DriverController {
     @PostMapping("/trips/{tripId}/start")
     public ResponseEntity<?> startTrip(@PathVariable Long tripId) {
          try {
+            User user = getAuthenticatedUser();
+            Driver driver = driverRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new RuntimeException("Driver profile not found for the authenticated user."));
+            Trip trip = tripService.findById(tripId).orElseThrow(() -> new RuntimeException("Trip not found"));
+            if (trip.getDriver() == null || !trip.getDriver().getId().equals(driver.getId())) {
+                throw new org.springframework.security.access.AccessDeniedException("Driver is not assigned to this trip");
+            }
             Trip startedTrip = tripService.startTrip(tripId);
             return ResponseEntity.ok(startedTrip);
+        } catch (org.springframework.security.access.AccessDeniedException e) {
+            throw e;
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -73,6 +88,13 @@ public class DriverController {
     @PostMapping("/trips/{tripId}/complete")
     public ResponseEntity<?> completeTrip(@PathVariable Long tripId, @RequestParam BigDecimal finalFare) {
         try {
+            User user = getAuthenticatedUser();
+            Driver driver = driverRepository.findByUserId(user.getId())
+                .orElseThrow(() -> new RuntimeException("Driver profile not found for the authenticated user."));
+            Trip trip = tripService.findById(tripId).orElseThrow(() -> new RuntimeException("Trip not found"));
+            if (trip.getDriver() == null || !trip.getDriver().getId().equals(driver.getId())) {
+                throw new org.springframework.security.access.AccessDeniedException("Driver is not assigned to this trip");
+            }
             Trip completedTrip = tripService.completeTrip(tripId, finalFare);
             return ResponseEntity.ok(completedTrip);
         } catch (RuntimeException e) {
@@ -129,7 +151,7 @@ public class DriverController {
         }
     }
 
-    @GetMapping("/online")
+    @GetMapping({"/online", "/available"})
     public ResponseEntity<?> getOnlineDrivers() {
         List<Driver> onlineDrivers = driverRepository.findByStatus(com.quicklift.backend.model.DriverStatus.ONLINE);
         return ResponseEntity.ok(onlineDrivers);

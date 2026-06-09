@@ -10,6 +10,7 @@ import com.quicklift.backend.repository.TripRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -28,6 +29,7 @@ public class TripService {
     @Autowired
     private SimpMessagingTemplate messagingTemplate;
 
+    @Transactional
     public Trip createTrip(Trip trip) {
         trip.setStatus(TripStatus.REQUESTED);
         trip.setRequestedAt(LocalDateTime.now());
@@ -58,6 +60,7 @@ public class TripService {
         return tripRepository.findByDriverIdAndStatus(driverId, status);
     }
 
+    @Transactional
     public Trip acceptTrip(Long tripId, Long driverId) {
         Trip trip = tripRepository.findById(tripId)
             .orElseThrow(() -> new RuntimeException("Trip not found"));
@@ -67,6 +70,10 @@ public class TripService {
 
         if (trip.getStatus() != TripStatus.REQUESTED) {
             throw new RuntimeException("Trip is not available for acceptance");
+        }
+
+        if (trip.getDriver() != null && !trip.getDriver().getId().equals(driverId)) {
+            throw new RuntimeException("Trip is assigned to another driver");
         }
 
         if (driver.getStatus() != DriverStatus.ONLINE) {
@@ -88,6 +95,7 @@ public class TripService {
         return updatedTrip;
     }
 
+    @Transactional
     public Trip startTrip(Long tripId) {
         Trip trip = tripRepository.findById(tripId)
             .orElseThrow(() -> new RuntimeException("Trip not found"));
@@ -108,6 +116,7 @@ public class TripService {
         return updatedTrip;
     }
 
+    @Transactional
     public Trip completeTrip(Long tripId, BigDecimal fare) {
         Trip trip = tripRepository.findById(tripId)
             .orElseThrow(() -> new RuntimeException("Trip not found"));
@@ -137,6 +146,7 @@ public class TripService {
         return updatedTrip;
     }
 
+    @Transactional
     public Trip cancelTrip(Long tripId) {
         Trip trip = tripRepository.findById(tripId)
             .orElseThrow(() -> new RuntimeException("Trip not found"));
@@ -145,11 +155,12 @@ public class TripService {
             throw new RuntimeException("Cannot cancel completed trip");
         }
 
+        TripStatus previousStatus = trip.getStatus();
         trip.setStatus(TripStatus.CANCELLED);
         trip.setCancelledAt(LocalDateTime.now());
 
         // Update driver status if trip was accepted
-        if (trip.getDriver() != null && trip.getStatus() == TripStatus.ACCEPTED) {
+        if (trip.getDriver() != null && (previousStatus == TripStatus.ACCEPTED || previousStatus == TripStatus.STARTED)) {
             Driver driver = trip.getDriver();
             driver.setStatus(DriverStatus.ONLINE);
             driverRepository.save(driver);
@@ -168,6 +179,7 @@ public class TripService {
         return driverRepository.findByVehicleTypeAndStatus(vehicleType, DriverStatus.ONLINE);
     }
 
+    @Transactional
     public Trip rateTrip(Long tripId, BigDecimal rating, String review) {
         Trip trip = tripRepository.findById(tripId)
             .orElseThrow(() -> new RuntimeException("Trip not found"));
@@ -182,6 +194,7 @@ public class TripService {
         return tripRepository.save(trip);
     }
 
+    @Transactional
     public Trip rejectTrip(Long tripId, Long driverId) {
         Trip trip = tripRepository.findById(tripId)
             .orElseThrow(() -> new RuntimeException("Trip not found"));
@@ -197,6 +210,7 @@ public class TripService {
         return trip;
     }
 
+    @Transactional
     public Trip createTripForDriver(com.quicklift.backend.dto.TripRequest tripRequest, com.quicklift.backend.model.User user, Long driverId) {
         Trip trip = new Trip();
         trip.setUser(user);
@@ -219,6 +233,7 @@ public class TripService {
         return savedTrip;
     }
 
+    @Transactional
     public Trip createTripAndAssignDriver(Trip trip) {
         List<Driver> availableDrivers = driverRepository.findByVehicleTypeAndStatus(
             trip.getRequestedVehicleType(), DriverStatus.ONLINE);
@@ -235,6 +250,7 @@ public class TripService {
         return savedTrip;
     }
 
+    @Transactional
     public Trip payForTrip(Long tripId) {
         Trip trip = tripRepository.findById(tripId)
             .orElseThrow(() -> new RuntimeException("Trip not found"));
@@ -242,6 +258,7 @@ public class TripService {
         return tripRepository.save(trip);
     }
 
+    @Transactional
     public Trip save(Trip trip) {
         return tripRepository.save(trip);
     }

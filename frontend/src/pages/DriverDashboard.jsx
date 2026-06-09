@@ -10,6 +10,7 @@ import DriverHeader from '../components/DriverHeader';
 import DriverTripHistoryList from '../components/DriverTripHistoryList';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+import { getAuthenticatedWsUrl, getStompConnectHeaders } from '../api/ws';
 
 const driverIcon = new L.Icon({
     iconUrl: 'https://img.icons8.com/ios-filled/50/000000/car.png',
@@ -67,9 +68,10 @@ const DriverDashboard = () => {
 
     useEffect(() => {
         if (!user || user.role !== 'DRIVER') return;
-        const socketFactory = () => new SockJS(import.meta.env.VITE_WS_BASE_URL);
+        const socketFactory = () => new SockJS(getAuthenticatedWsUrl());
         const client = new Client({
             webSocketFactory: socketFactory,
+            connectHeaders: getStompConnectHeaders(),
             reconnectDelay: 5000,
             heartbeatIncoming: 4000,
             heartbeatOutgoing: 4000,

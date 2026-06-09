@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+import { getAuthenticatedWsUrl, getStompConnectHeaders } from '../api/ws';
 
 const DriverPendingRequests = () => {
   const [pendingTrips, setPendingTrips] = useState([]);
@@ -28,9 +29,10 @@ const DriverPendingRequests = () => {
 
   useEffect(() => {
     if (!user || user.role !== 'DRIVER') return;
-    const socketFactory = () => new SockJS(import.meta.env.VITE_WS_BASE_URL);
+    const socketFactory = () => new SockJS(getAuthenticatedWsUrl());
     const client = new Client({
       webSocketFactory: socketFactory,
+      connectHeaders: getStompConnectHeaders(),
       reconnectDelay: 5000,
       heartbeatIncoming: 4000,
       heartbeatOutgoing: 4000,

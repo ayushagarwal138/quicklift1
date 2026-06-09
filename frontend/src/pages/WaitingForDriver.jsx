@@ -2,19 +2,17 @@ import React, { useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import SockJS from 'sockjs-client';
 import { Client } from '@stomp/stompjs';
+import { getAuthenticatedWsUrl, getStompConnectHeaders } from '../api/ws';
 
 const WaitingForDriver = () => {
   const { tripId } = useParams();
   const navigate = useNavigate();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
     const client = new Client({
       brokerURL: undefined, // Use SockJS
-      webSocketFactory: () => new SockJS(import.meta.env.VITE_WS_BASE_URL),
-      connectHeaders: {
-        Authorization: `Bearer ${token}`,
-      },
+      webSocketFactory: () => new SockJS(getAuthenticatedWsUrl()),
+      connectHeaders: getStompConnectHeaders(),
       onConnect: () => {
         client.subscribe(`/topic/trip/${tripId}/status`, (message) => {
           const trip = JSON.parse(message.body);

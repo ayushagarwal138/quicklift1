@@ -1,8 +1,8 @@
 package com.quicklift.backend.controller;
 
+import com.quicklift.backend.dto.UserResponse;
 import com.quicklift.backend.model.Driver;
 import com.quicklift.backend.model.Trip;
-import com.quicklift.backend.model.User;
 import com.quicklift.backend.service.AdminService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/admin")
+@RequestMapping({"/api/v1/admin", "/api/admin"})
 public class AdminController {
 
     @Autowired
@@ -25,8 +25,10 @@ public class AdminController {
 
     @GetMapping("/users")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<User>> getAllUsers() {
-        return ResponseEntity.ok(adminService.findAllUsers());
+    public ResponseEntity<List<UserResponse>> getAllUsers() {
+        return ResponseEntity.ok(adminService.findAllUsers().stream()
+            .map(UserResponse::from)
+            .toList());
     }
 
     @GetMapping("/drivers")
