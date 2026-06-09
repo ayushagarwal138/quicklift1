@@ -1,108 +1,165 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { driverAPI } from '../api/driver';
-import { Check, X, MapPin, Navigation, Car, Clock } from 'lucide-react';
-import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import DriverHeader from '../components/DriverHeader';
+import { MapPin, Navigation, Clock, IndianRupee, Car } from 'lucide-react';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { getAuthenticatedWsUrl, getStompConnectHeaders } from '../api/ws';
+import { useAuth } from '../context/AuthContext';
 
 const DriverPendingRequests = () => {
-  const [pendingTrips, setPendingTrips] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const { user } = useAuth();
-  const { info } = useToast();
+    const { user } = useAuth();
+    const [requests, setRequests] = useState([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [actionLoading, setActionLoading] = useState(null);
+    const { success, error, info } = useToast();
 
-  const fetchTrips = async () => {
-    setLoading(true);
-    const trips = await driverAPI.getMyTrips();
-    // Sort by requestedAt descending (latest first)
-    const pending = trips.filter(trip => trip.status === 'REQUESTED')
-      .sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt));
-    setPendingTrips(pending);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchTrips();
-  }, []);
-
-  useEffect(() => {
-    if (!user || user.role !== 'DRIVER') return;
-    const socketFactory = () => new SockJS(getAuthenticatedWsUrl());
-    const client = new Client({
-      webSocketFactory: socketFactory,
-      connectHeaders: getStompConnectHeaders(),
-      reconnectDelay: 5000,
-      heartbeatIncoming: 4000,
-      heartbeatOutgoing: 4000,
-    });
-    client.onConnect = () => {
-      client.subscribe(`/topic/driver/${user.id}/requests`, (message) => {
-        fetchTrips();
-        info('New trip request received!');
-      });
+    const fetchRequests = async () => {
+        setIsLoading(true);
+        try {
+            const trips = await driverAPI.getMyTrips();
+            setRequests(trips.filter(t => t.status === 'REQUESTED').sort((a,b) => new Date(b.requestedAt) - new Date(a.requestedAt)));
+        } catch (err) {
+            error('Failed to fetch pending requests.');
+        } finally {
+            setIsLoading(false);
+        }
     };
-    client.activate();
-    return () => client.deactivate();
-  }, [user]);
 
-  const handleAccept = async (tripId) => {
-    await driverAPI.acceptTrip(tripId);
-    fetchTrips();
-  };
-  const handleReject = async (tripId) => {
-    await driverAPI.rejectTrip(tripId);
-    fetchTrips();
-  };
+    useEffect(() => {
+        fetchRequests();
+    }, []);
 
-  if (loading) return <div className="text-center py-10">Loading pending requests...</div>;
+    useEffect(() => {
+        if (!user || user.role !== 'DRIVER') return;
+        const client = new Client({
+            webSocketFactory: () => new SockJS(getAuthenticatedWsUrl()),
+            connectHeaders: getStompConnectHeaders(),
+            reconnectDelay: 5000,
+        });
+        client.onConnect = () => {
+            client.subscribe(`/topic/driver/${user.id}/requests`, (message) => {
+                fetchRequests();
+                info('New trip request received!');
+            });
+        };
+        client.activate();
+        return () => client.deactivate();
+    }, [user, info]);
 
-  return (
-    <div className="max-w-3xl mx-auto py-8">
-      <h1 className="text-2xl font-bold mb-6">Pending Ride Requests</h1>
-      {pendingTrips.length === 0 ? (
-        <div className="text-gray-500">No pending ride requests.</div>
-      ) : (
-        <div className="space-y-6">
-          {pendingTrips.map(trip => (
-            <div key={trip.id} className="bg-blue-50 rounded-lg p-6 shadow flex flex-col gap-2 border-l-4 border-blue-400">
-              <div className="flex items-center gap-2 mb-2">
-                <MapPin className="w-5 h-5 text-blue-600" />
-                <span className="font-semibold">Pickup:</span> {trip.pickupLocation}
-              </div>
-              <div className="flex items-center gap-2 mb-2">
-                <Navigation className="w-5 h-5 text-green-600" />
-                <span className="font-semibold">Destination:</span> {trip.destination}
-              </div>
-              <div className="flex items-center gap-2 mb-2">
-                <Car className="w-5 h-5 text-gray-600" />
-                <span className="font-semibold">Vehicle:</span> {trip.requestedVehicleType}
-              </div>
-              <div className="flex items-center gap-2 mb-2">
-                <Clock className="w-5 h-5 text-yellow-600" />
-                <span className="font-semibold">Requested At:</span> {new Date(trip.requestedAt).toLocaleString()}
-              </div>
-              <div className="flex gap-4 mt-4">
-                <button
-                  onClick={() => handleAccept(trip.id)}
-                  className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg transition-transform transform hover:scale-105 shadow"
-                >
-                  <Check className="inline w-4 h-4 mr-1" /> Accept
-                </button>
-                <button
-                  onClick={() => handleReject(trip.id)}
-                  className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg transition-transform transform hover:scale-105 shadow"
-                >
-                  <X className="inline w-4 h-4 mr-1" /> Reject
-                </button>
-              </div>
+    const handleAccept = async (tripId) => {
+        setActionLoading(tripId);
+        try {
+            await driverAPI.acceptTrip(tripId);
+            success('Trip accepted successfully!');
+            fetchRequests();
+        } catch (err) {
+            error(err.response?.data?.message || 'Failed to accept trip.');
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    const handleReject = async (tripId) => {
+        setActionLoading(tripId);
+        try {
+            await driverAPI.rejectTrip(tripId);
+            success('Trip rejected.');
+            fetchRequests();
+        } catch (err) {
+            error('Failed to reject trip.');
+        } finally {
+            setActionLoading(null);
+        }
+    };
+
+    return (
+        <>
+            <DriverHeader />
+            <div className="page-container">
+                <div className="page-content py-6 sm:py-8">
+                    <div className="page-header mb-8">
+                        <h1 className="page-title">Pending Requests</h1>
+                        <p className="page-subtitle">Rides waiting for your approval</p>
+                    </div>
+
+                    {isLoading ? (
+                        <div className="grid md:grid-cols-2 gap-4">
+                            {[1,2,3,4].map(i => <div key={i} className="skeleton h-48 rounded-2xl" />)}
+                        </div>
+                    ) : requests.length === 0 ? (
+                        <div className="card p-12 text-center animate-fade-in">
+                            <div className="w-20 h-20 bg-surface-100 dark:bg-surface-800 rounded-full flex items-center justify-center mx-auto mb-4 relative">
+                                <div className="absolute inset-0 bg-brand-500/10 rounded-full animate-ping" />
+                                <Car className="w-10 h-10 text-surface-400" />
+                            </div>
+                            <h3 className="text-xl font-semibold text-surface-900 dark:text-white mb-2">No pending requests</h3>
+                            <p className="text-surface-500 dark:text-surface-400">Keep your app open to receive new ride requests.</p>
+                        </div>
+                    ) : (
+                        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {requests.map((trip) => (
+                                <div key={trip.id} className="card p-5 animate-fade-in-up border-2 border-transparent hover:border-brand-500/30 transition-all">
+                                    <div className="flex items-center justify-between mb-4 border-b border-surface-100 dark:border-surface-700/50 pb-4">
+                                        <div className="flex items-center gap-2 text-sm text-surface-500 dark:text-surface-400">
+                                            <Clock className="w-4 h-4" />
+                                            <span>{new Date(trip.requestedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                                        </div>
+                                        <span className="flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400 text-lg">
+                                            <IndianRupee className="w-5 h-5" />{trip.fare ? trip.fare.toFixed(2) : 'N/A'}
+                                        </span>
+                                    </div>
+                                    
+                                    <div className="space-y-4 mb-6">
+                                        <div className="flex items-start gap-3">
+                                            <div className="mt-0.5">
+                                                <div className="w-8 h-8 rounded-lg bg-brand-50 dark:bg-brand-900/30 flex items-center justify-center">
+                                                    <MapPin className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-medium text-surface-500 uppercase tracking-wide">Pickup</p>
+                                                <p className="text-sm font-medium text-surface-900 dark:text-white line-clamp-2">{trip.pickupLocation}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-start gap-3">
+                                            <div className="mt-0.5">
+                                                <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center">
+                                                    <Navigation className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-medium text-surface-500 uppercase tracking-wide">Destination</p>
+                                                <p className="text-sm font-medium text-surface-900 dark:text-white line-clamp-2">{trip.destination}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex gap-3">
+                                        <button 
+                                            onClick={() => handleReject(trip.id)} 
+                                            disabled={actionLoading === trip.id} 
+                                            className="btn-danger flex-1"
+                                        >
+                                            Decline
+                                        </button>
+                                        <button 
+                                            onClick={() => handleAccept(trip.id)} 
+                                            disabled={actionLoading === trip.id} 
+                                            className="btn-success flex-1"
+                                        >
+                                            {actionLoading === trip.id ? 'Accepting...' : 'Accept'}
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+        </>
+    );
 };
 
-export default DriverPendingRequests; 
+export default DriverPendingRequests;

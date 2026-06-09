@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { driverAPI } from '../api/driver';
 import { useToast } from '../context/ToastContext';
-import { Car, Check, Clock, List, Navigation, ShieldAlert, X, DollarSign, MapPin, Star, TrendingUp, LogOut, User as UserIcon, LayoutDashboard, History, Activity, UserCheck, Phone, Truck } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Car, Clock, DollarSign, MapPin, Star, Activity, UserCheck, Navigation } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import { useAuth } from '../context/AuthContext';
@@ -19,46 +18,39 @@ const driverIcon = new L.Icon({
     popupAnchor: [0, -35]
 });
 
-const menuItems = [
-  { label: 'Dashboard', icon: <LayoutDashboard className="w-5 h-5" />, section: 'dashboard' },
-  { label: 'Active Trip', icon: <Activity className="w-5 h-5" />, section: 'activeTrip' },
-  { label: 'Trip History', icon: <History className="w-5 h-5" />, section: 'history' },
-  { label: 'Profile', icon: <UserIcon className="w-5 h-5" />, section: 'profile' },
+const tabs = [
+  { id: 'dashboard', label: 'Overview', icon: Activity },
+  { id: 'activeTrip', label: 'Active Trip', icon: Navigation },
+  { id: 'history', label: 'History', icon: Clock },
 ];
 
 const DriverDashboard = () => {
     const { success, error, info } = useToast();
-    const { logout, user } = useAuth();
+    const { user } = useAuth();
     const [driverStatus, setDriverStatus] = useState('ONLINE');
     const [pendingTrips, setPendingTrips] = useState([]);
     const [activeTrip, setActiveTrip] = useState(null);
     const [pastTrips, setPastTrips] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
-    // Placeholder for earnings and ratings
-    const [earnings, setEarnings] = useState(12345);
-    const [rating, setRating] = useState(4.8);
+    const [earnings, setEarnings] = useState(0);
+    const [rating, setRating] = useState(0);
     const [selectedSection, setSelectedSection] = useState('dashboard');
     const [actionLoading, setActionLoading] = useState(false);
 
     const fetchAllData = async () => {
         setIsLoading(true);
         try {
-            // Fetch active trip
             const activeTripData = await driverAPI.getMyActiveTrip();
             if (activeTripData && Object.keys(activeTripData).length > 0) {
                 setActiveTrip(activeTripData);
             } else {
                 setActiveTrip(null);
             }
-            // Fetch pending trips (REQUESTED, assigned to this driver)
             const myTrips = await driverAPI.getMyTrips();
             const sortedPendingTrips = [...myTrips.filter(trip => trip.status === 'REQUESTED')].sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt));
             setPendingTrips(sortedPendingTrips);
             setPastTrips(myTrips.filter(trip => trip.status === 'COMPLETED' || trip.status === 'CANCELLED')
                 .sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt)));
-            // TODO: Fetch earnings and rating from backend
-            setEarnings(12345); // Placeholder
-            setRating(4.8); // Placeholder
         } catch (err) {
             error(err.response?.data?.message || 'Failed to fetch dashboard data.');
         } finally {
@@ -161,105 +153,144 @@ const DriverDashboard = () => {
     };
 
     if (isLoading) {
-        return <div className="text-center py-10">Loading Driver Dashboard...</div>;
+        return (
+            <>
+                <DriverHeader />
+                <div className="page-container">
+                    <div className="page-content py-12">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                            {[1,2,3].map(i => <div key={i} className="skeleton h-32 rounded-2xl" />)}
+                        </div>
+                        <div className="skeleton h-64 rounded-2xl" />
+                    </div>
+                </div>
+            </>
+        );
     }
 
     return (
         <>
             <DriverHeader />
-            <div className="min-h-screen bg-white dark:bg-gray-900">
-                <div className="max-w-7xl mx-auto flex flex-col md:flex-row min-h-screen">
-                    {/* Sidebar */}
-                    <aside className="w-full md:w-64 bg-gradient-to-b from-blue-700 to-blue-900 dark:from-gray-800 dark:to-gray-900 shadow-xl flex flex-col justify-between min-h-screen">
-                        <div>
-                            <div className="flex items-center gap-2 px-6 py-6 border-b border-blue-800 dark:border-gray-700">
-                                <Car className="w-8 h-8 text-white" />
-                                <span className="text-xl font-bold text-white">Driver Panel</span>
-                            </div>
-                            <div className="px-6 py-4 flex flex-col items-center">
-                                <span className={`px-4 py-2 rounded-full text-lg font-semibold mb-2 ${driverStatus === 'ONLINE' ? 'bg-green-100 text-green-800' : 'bg-gray-200 text-gray-600'}`}>{driverStatus}</span>
-                                <button
-                                    onClick={handleStatusToggle}
-                                    className={`mt-2 px-6 py-2 rounded-lg text-base font-bold transition-colors ${driverStatus === 'ONLINE' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'} shadow-md`}
-                                >
-                                    {driverStatus === 'ONLINE' ? 'Go Offline' : 'Go Online'}
-                                </button>
-                            </div>
-                            <nav className="mt-8 flex-1">
-                                {menuItems.map(item => (
-                                    <button
-                                        key={item.section}
-                                        onClick={() => setSelectedSection(item.section)}
-                                        className={`w-full flex items-center gap-3 px-6 py-3 text-left text-white hover:bg-blue-800 dark:hover:bg-gray-700 transition-colors font-medium ${selectedSection === item.section ? 'bg-blue-900 dark:bg-gray-700 text-yellow-300' : ''}`}
-                                    >
-                                        {item.icon}
-                                        {item.label}
-                                    </button>
-                                ))}
-                            </nav>
+            <div className="page-container">
+                <div className="page-content py-6 sm:py-8">
+                    {/* Status & Tab Bar */}
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+                        <div className="flex items-center gap-4">
+                            <h1 className="page-title">Dashboard</h1>
+                            <button
+                                onClick={handleStatusToggle}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all duration-200 ${
+                                    driverStatus === 'ONLINE'
+                                        ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30'
+                                        : 'bg-surface-100 dark:bg-surface-800 text-surface-500 dark:text-surface-400 hover:bg-surface-200 dark:hover:bg-surface-700'
+                                }`}
+                            >
+                                <span className={driverStatus === 'ONLINE' ? 'status-online' : 'status-offline'} />
+                                {driverStatus}
+                            </button>
                         </div>
-                        <button
-                            onClick={logout}
-                            className="flex items-center gap-2 px-6 py-4 text-red-300 hover:bg-red-900/20 transition-colors font-semibold border-t border-blue-800 dark:border-gray-700"
-                        >
-                            <LogOut className="w-5 h-5" /> Logout
-                        </button>
-                    </aside>
-                    {/* Main Content */}
-                    <main className="flex-1 p-4 md:p-10 bg-gray-50 dark:bg-gray-900">
-                        {/* Dashboard Summary Cards */}
-                        {selectedSection === 'dashboard' && (
-                            <>
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 flex flex-col items-center border-t-4 border-green-400">
-                                        <DollarSign className="w-10 h-10 text-green-500 mb-3" />
-                                        <div className="text-3xl font-extrabold text-gray-900 dark:text-white">₹{earnings.toLocaleString()}</div>
-                                        <div className="text-gray-500 dark:text-gray-300 mt-2 text-lg">Earnings</div>
+                        {/* Tab Navigation */}
+                        <div className="flex gap-1 bg-surface-100 dark:bg-surface-800 rounded-xl p-1 w-full sm:w-auto overflow-x-auto">
+                            {tabs.map(tab => {
+                                const Icon = tab.icon;
+                                return (
+                                    <button
+                                        key={tab.id}
+                                        onClick={() => setSelectedSection(tab.id)}
+                                        className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all duration-200 ${
+                                            selectedSection === tab.id
+                                                ? 'bg-white dark:bg-surface-700 text-surface-900 dark:text-white shadow-sm'
+                                                : 'text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200'
+                                        }`}
+                                    >
+                                        <Icon className="w-4 h-4" />
+                                        {tab.label}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Dashboard Overview */}
+                    {selectedSection === 'dashboard' && (
+                        <div className="space-y-8 animate-fade-in">
+                            {/* Stats */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+                                <div className="stat-card">
+                                    <div className="stat-icon bg-emerald-50 dark:bg-emerald-900/20">
+                                        <DollarSign className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
                                     </div>
-                                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 flex flex-col items-center border-t-4 border-yellow-400">
-                                        <Star className="w-10 h-10 text-yellow-400 mb-3" />
-                                        <div className="text-3xl font-extrabold text-gray-900 dark:text-white">{rating.toFixed(2)}</div>
-                                        <div className="text-gray-500 dark:text-gray-300 mt-2 text-lg">Rating</div>
-                                    </div>
-                                    <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 flex flex-col items-center border-t-4 border-blue-400">
-                                        <UserCheck className="w-10 h-10 text-blue-500 mb-3" />
-                                        <div className="text-3xl font-extrabold text-gray-900 dark:text-white">{pendingTrips.length}</div>
-                                        <div className="text-gray-500 dark:text-gray-300 mt-2 text-lg">Pending Requests</div>
+                                    <div>
+                                        <p className="stat-label">Earnings</p>
+                                        <p className="stat-value">₹{(earnings || 0).toLocaleString()}</p>
                                     </div>
                                 </div>
-                                {/* Active Trip Preview in Dashboard */}
-                                {activeTrip && (
-                                    <section className="mb-8">
-                                        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white"><Activity className="w-6 h-6 text-green-500" /> Active Trip</h2>
-                                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 flex flex-col md:flex-row gap-8">
-                                            <div className="flex-1">
-                                                <div className="mb-4">
-                                                    <div className="font-semibold text-lg mb-2">Pickup: <span className="text-blue-600">{activeTrip.pickupLocation}</span></div>
-                                                    <div className="font-semibold text-lg mb-2">Destination: <span className="text-green-600">{activeTrip.destination}</span></div>
-                                                    <div className="text-gray-700 dark:text-gray-300 mb-2">Fare: ₹{activeTrip.fare ? activeTrip.fare.toFixed(2) : 'N/A'}</div>
-                                                    <div className="text-gray-700 dark:text-gray-300 mb-2">Status: <span className="font-semibold">{activeTrip.status}</span></div>
+                                <div className="stat-card">
+                                    <div className="stat-icon bg-amber-50 dark:bg-amber-900/20">
+                                        <Star className="w-6 h-6 text-amber-600 dark:text-amber-400" />
+                                    </div>
+                                    <div>
+                                        <p className="stat-label">Rating</p>
+                                        <p className="stat-value">{(rating || 0).toFixed(2)}</p>
+                                    </div>
+                                </div>
+                                <div className="stat-card">
+                                    <div className="stat-icon bg-brand-50 dark:bg-brand-900/20">
+                                        <UserCheck className="w-6 h-6 text-brand-600 dark:text-brand-400" />
+                                    </div>
+                                    <div>
+                                        <p className="stat-label">Pending Requests</p>
+                                        <p className="stat-value">{pendingTrips.length}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Active Trip Preview */}
+                            {activeTrip && (
+                                <div>
+                                    <h2 className="section-title flex items-center gap-2 mb-4">
+                                        <Activity className="w-5 h-5 text-emerald-500" /> Active Trip
+                                    </h2>
+                                    <div className="card p-6">
+                                        <div className="flex flex-col lg:flex-row gap-6">
+                                            <div className="flex-1 space-y-4">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="w-8 h-8 rounded-lg bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center mt-0.5">
+                                                        <MapPin className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-medium text-surface-500 uppercase tracking-wide">Pickup</p>
+                                                        <p className="text-sm font-medium text-surface-900 dark:text-white">{activeTrip.pickupLocation}</p>
+                                                    </div>
                                                 </div>
-                                                <div className="flex gap-4 mt-4">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center mt-0.5">
+                                                        <Navigation className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-medium text-surface-500 uppercase tracking-wide">Destination</p>
+                                                        <p className="text-sm font-medium text-surface-900 dark:text-white">{activeTrip.destination}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-center gap-4 pt-2">
+                                                    <span className="text-lg font-bold text-surface-900 dark:text-white">₹{activeTrip.fare ? activeTrip.fare.toFixed(2) : 'N/A'}</span>
+                                                    <span className="badge-info">{activeTrip.status}</span>
+                                                </div>
+                                                <div className="flex gap-3 pt-2">
                                                     {activeTrip.status === 'ACCEPTED' && (
-                                                        <button 
-                                                            onClick={() => handleUpdateTripStatus(activeTrip.id, 'start')}
-                                                            className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105 shadow"
-                                                        >
+                                                        <button onClick={() => handleUpdateTripStatus(activeTrip.id, 'start')} className="btn-success flex-1">
                                                             Start Trip
                                                         </button>
                                                     )}
                                                     {activeTrip.status === 'STARTED' && (
-                                                        <button 
-                                                            onClick={() => handleUpdateTripStatus(activeTrip.id, 'complete')}
-                                                            className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105 shadow"
-                                                        >
+                                                        <button onClick={() => handleUpdateTripStatus(activeTrip.id, 'complete')} className="btn-primary flex-1">
                                                             Complete Trip
                                                         </button>
                                                     )}
                                                 </div>
                                             </div>
-                                            <div className="flex-1">
-                                                <MapContainer center={[activeTrip.pickupLatitude, activeTrip.pickupLongitude]} zoom={13} style={{ height: '250px', width: '100%' }}>
+                                            <div className="flex-1 min-h-[250px] rounded-xl overflow-hidden">
+                                                <MapContainer center={[activeTrip.pickupLatitude, activeTrip.pickupLongitude]} zoom={13} style={{ height: '100%', width: '100%', minHeight: '250px' }}>
                                                     <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                                                     <Marker position={[activeTrip.pickupLatitude, activeTrip.pickupLongitude]} icon={driverIcon}>
                                                         <Popup>Pickup: {activeTrip.pickupLocation}</Popup>
@@ -267,76 +298,98 @@ const DriverDashboard = () => {
                                                     <Marker position={[activeTrip.destinationLatitude, activeTrip.destinationLongitude]}>
                                                         <Popup>Destination: {activeTrip.destination}</Popup>
                                                     </Marker>
-                                                    <Polyline positions={[[activeTrip.pickupLatitude, activeTrip.pickupLongitude], [activeTrip.destinationLatitude, activeTrip.destinationLongitude]]} color="blue" />
+                                                    <Polyline positions={[[activeTrip.pickupLatitude, activeTrip.pickupLongitude], [activeTrip.destinationLatitude, activeTrip.destinationLongitude]]} color="#3366ff" />
                                                 </MapContainer>
                                             </div>
                                         </div>
-                                    </section>
-                                )}
-                                {/* Show only the latest pending request */}
-                                {pendingTrips.length > 0 && (
-                                    <section className="mb-8">
-                                        <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
-                                            <Clock className="w-6 h-6 text-yellow-500" /> Latest Pending Request
-                                        </h2>
-                                        {/* Render the latest pending trip (first in sorted array) */}
-                                        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 flex flex-col gap-4">
-                                            <div className="font-semibold text-lg mb-2">Pickup: <span className="text-blue-600">{pendingTrips[0].pickupLocation}</span></div>
-                                            <div className="font-semibold text-lg mb-2">Destination: <span className="text-green-600">{pendingTrips[0].destination}</span></div>
-                                            <div className="text-gray-700 dark:text-gray-300 mb-2">Fare: ₹{pendingTrips[0].fare ? pendingTrips[0].fare.toFixed(2) : 'N/A'}</div>
-                                            <div className="flex gap-4 mt-4">
-                                                <button
-                                                    onClick={() => handleAcceptTrip(pendingTrips[0].id)}
-                                                    className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105 shadow disabled:opacity-60 disabled:cursor-not-allowed"
-                                                    disabled={actionLoading}
-                                                >
-                                                    {actionLoading ? 'Processing...' : 'Accept'}
-                                                </button>
-                                                <button
-                                                    onClick={() => handleRejectTrip(pendingTrips[0].id)}
-                                                    className="flex-1 bg-red-500 hover:bg-red-600 text-white font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105 shadow disabled:opacity-60 disabled:cursor-not-allowed"
-                                                    disabled={actionLoading}
-                                                >
-                                                    {actionLoading ? 'Processing...' : 'Reject'}
-                                                </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Latest Pending Request */}
+                            {pendingTrips.length > 0 && (
+                                <div>
+                                    <h2 className="section-title flex items-center gap-2 mb-4">
+                                        <Clock className="w-5 h-5 text-amber-500" /> Latest Pending Request
+                                    </h2>
+                                    <div className="card p-6">
+                                        <div className="space-y-3 mb-4">
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center mt-0.5">
+                                                    <MapPin className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-medium text-surface-500 uppercase tracking-wide">Pickup</p>
+                                                    <p className="text-sm font-medium text-surface-900 dark:text-white">{pendingTrips[0].pickupLocation}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-start gap-3">
+                                                <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center mt-0.5">
+                                                    <Navigation className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs font-medium text-surface-500 uppercase tracking-wide">Destination</p>
+                                                    <p className="text-sm font-medium text-surface-900 dark:text-white">{pendingTrips[0].destination}</p>
+                                                </div>
+                                            </div>
+                                            <p className="text-lg font-bold text-surface-900 dark:text-white pt-1">₹{pendingTrips[0].fare ? pendingTrips[0].fare.toFixed(2) : 'N/A'}</p>
+                                        </div>
+                                        <div className="flex gap-3">
+                                            <button onClick={() => handleAcceptTrip(pendingTrips[0].id)} disabled={actionLoading} className="btn-success flex-1">
+                                                {actionLoading ? 'Processing...' : 'Accept'}
+                                            </button>
+                                            <button onClick={() => handleRejectTrip(pendingTrips[0].id)} disabled={actionLoading} className="btn-danger flex-1">
+                                                {actionLoading ? 'Processing...' : 'Reject'}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Active Trip Tab */}
+                    {selectedSection === 'activeTrip' && activeTrip && (
+                        <div className="animate-fade-in">
+                            <h2 className="section-title flex items-center gap-2 mb-6">
+                                <Activity className="w-5 h-5 text-emerald-500" /> Active Trip
+                            </h2>
+                            <div className="card p-6">
+                                <div className="flex flex-col lg:flex-row gap-6">
+                                    <div className="flex-1 space-y-4">
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center mt-0.5">
+                                                <MapPin className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-medium text-surface-500 uppercase tracking-wide">Pickup</p>
+                                                <p className="text-sm font-medium text-surface-900 dark:text-white">{activeTrip.pickupLocation}</p>
                                             </div>
                                         </div>
-                                    </section>
-                                )}
-                            </>
-                        )}
-                        {selectedSection === 'activeTrip' && activeTrip && (
-                            <section className="mb-8">
-                                <h2 className="text-2xl font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white"><Activity className="w-6 h-6 text-green-500" /> Active Trip</h2>
-                                <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 flex flex-col md:flex-row gap-8">
-                                    <div className="flex-1">
-                                        <div className="mb-4">
-                                            <div className="font-semibold text-lg mb-2">Pickup: <span className="text-blue-600">{activeTrip.pickupLocation}</span></div>
-                                            <div className="font-semibold text-lg mb-2">Destination: <span className="text-green-600">{activeTrip.destination}</span></div>
-                                            <div className="text-gray-700 dark:text-gray-300 mb-2">Fare: ₹{activeTrip.fare ? activeTrip.fare.toFixed(2) : 'N/A'}</div>
-                                            <div className="text-gray-700 dark:text-gray-300 mb-2">Status: <span className="font-semibold">{activeTrip.status}</span></div>
+                                        <div className="flex items-start gap-3">
+                                            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center mt-0.5">
+                                                <Navigation className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-medium text-surface-500 uppercase tracking-wide">Destination</p>
+                                                <p className="text-sm font-medium text-surface-900 dark:text-white">{activeTrip.destination}</p>
+                                            </div>
                                         </div>
-                                        <div className="flex gap-4 mt-4">
+                                        <div className="flex items-center gap-4 pt-2">
+                                            <span className="text-lg font-bold text-surface-900 dark:text-white">₹{activeTrip.fare ? activeTrip.fare.toFixed(2) : 'N/A'}</span>
+                                            <span className="badge-info">{activeTrip.status}</span>
+                                        </div>
+                                        <div className="flex gap-3 pt-2">
                                             {activeTrip.status === 'ACCEPTED' && (
-                                                <button 
-                                                    onClick={() => handleUpdateTripStatus(activeTrip.id, 'start')}
-                                                    className="flex-1 bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105 shadow"
-                                                >
-                                                    Start Trip
-                                                </button>
+                                                <button onClick={() => handleUpdateTripStatus(activeTrip.id, 'start')} className="btn-success flex-1">Start Trip</button>
                                             )}
                                             {activeTrip.status === 'STARTED' && (
-                                                <button 
-                                                    onClick={() => handleUpdateTripStatus(activeTrip.id, 'complete')}
-                                                    className="flex-1 bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-lg transition-transform transform hover:scale-105 shadow"
-                                                >
-                                                    Complete Trip
-                                                </button>
+                                                <button onClick={() => handleUpdateTripStatus(activeTrip.id, 'complete')} className="btn-primary flex-1">Complete Trip</button>
                                             )}
                                         </div>
                                     </div>
-                                    <div className="flex-1">
-                                        <MapContainer center={[activeTrip.pickupLatitude, activeTrip.pickupLongitude]} zoom={13} style={{ height: '250px', width: '100%' }}>
+                                    <div className="flex-1 min-h-[300px] rounded-xl overflow-hidden">
+                                        <MapContainer center={[activeTrip.pickupLatitude, activeTrip.pickupLongitude]} zoom={13} style={{ height: '100%', width: '100%', minHeight: '300px' }}>
                                             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
                                             <Marker position={[activeTrip.pickupLatitude, activeTrip.pickupLongitude]} icon={driverIcon}>
                                                 <Popup>Pickup: {activeTrip.pickupLocation}</Popup>
@@ -344,29 +397,32 @@ const DriverDashboard = () => {
                                             <Marker position={[activeTrip.destinationLatitude, activeTrip.destinationLongitude]}>
                                                 <Popup>Destination: {activeTrip.destination}</Popup>
                                             </Marker>
-                                            <Polyline positions={[[activeTrip.pickupLatitude, activeTrip.pickupLongitude], [activeTrip.destinationLatitude, activeTrip.destinationLongitude]]} color="blue" />
+                                            <Polyline positions={[[activeTrip.pickupLatitude, activeTrip.pickupLongitude], [activeTrip.destinationLatitude, activeTrip.destinationLongitude]]} color="#3366ff" />
                                         </MapContainer>
                                     </div>
                                 </div>
-                            </section>
-                        )}
-                        {selectedSection === 'activeTrip' && !activeTrip && (
-                            <div className="text-center text-gray-500 dark:text-gray-400 text-lg py-10">No active trip at the moment.</div>
-                        )}
-                        {selectedSection === 'history' && (
-                            <section>
-                                <h2 className="text-2xl font-bold mb-6">Trip History</h2>
-                                <DriverTripHistoryList trips={pastTrips} />
-                            </section>
-                        )}
-                        {selectedSection === 'profile' && (
-                            <section>{/* ...profile details... */}</section>
-                        )}
-                    </main>
+                            </div>
+                        </div>
+                    )}
+                    {selectedSection === 'activeTrip' && !activeTrip && (
+                        <div className="card p-12 text-center animate-fade-in">
+                            <Car className="w-12 h-12 text-surface-300 dark:text-surface-600 mx-auto mb-4" />
+                            <h3 className="text-lg font-semibold text-surface-900 dark:text-white mb-1">No Active Trip</h3>
+                            <p className="text-sm text-surface-500 dark:text-surface-400">You don't have an active trip at the moment.</p>
+                        </div>
+                    )}
+
+                    {/* History Tab */}
+                    {selectedSection === 'history' && (
+                        <div className="animate-fade-in">
+                            <h2 className="section-title mb-6">Trip History</h2>
+                            <DriverTripHistoryList trips={pastTrips} />
+                        </div>
+                    )}
                 </div>
             </div>
         </>
     );
 };
 
-export default DriverDashboard; 
+export default DriverDashboard;

@@ -1,14 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { MapPin, Car, Navigation, DollarSign, Clock, Search } from 'lucide-react';
-import { MapContainer, TileLayer, Marker, Popup, useMapEvents } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
+import React, { useState, useEffect, useRef } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMapEvents, Polyline } from 'react-leaflet';
 import L from 'leaflet';
-import { useToast } from '../context/ToastContext';
 import { tripsAPI } from '../api/trips';
-import { api, publicApi } from '../api/api';
+import { useNavigate } from 'react-router-dom';
+import { useToast } from '../context/ToastContext';
+import UserHeader from '../components/Header';
+import { MapPin, Navigation, Car, Loader2, IndianRupee, CreditCard, Banknote, QrCode } from 'lucide-react';
 
-// Fix for default marker icon issue with webpack
+// Fix for default marker icon
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
@@ -16,454 +15,338 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
 });
 
-const vehicleTypes = [
-  { id: 'SEDAN', name: 'Sedan', icon: '🚗', description: 'Comfortable for 4' },
-  { id: 'SUV', name: 'SUV', icon: '🚙', description: 'Spacious 6-seater' },
-  { id: 'MOTORCYCLE', name: 'Motorcycle', icon: '🏍️', description: 'Quick & economical' },
-];
+const greenIcon = new L.Icon({
+  iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+  iconSize: [25, 41],
+  iconAnchor: [12, 41],
+  popupAnchor: [1, -34],
+  shadowSize: [41, 41]
+});
 
-const LocationMarker = ({ position, text }) => {
-  return position === null ? null : (
-    <Marker position={position}>
-      <Popup>{text}</Popup>
-    </Marker>
-  );
-};
-
-const MapFlyTo = ({ center, zoom }) => {
-  const map = useMapEvents({});
-  useEffect(() => {
-    if (center) {
-      map.flyTo(center, zoom);
-    }
-  }, [center, zoom, map]);
+function LocationPicker({ onClick }) {
+  useMapEvents({
+    click(e) {
+      onClick(e.latlng);
+    },
+  });
   return null;
 }
 
+const vehicleTypes = [
+  { id: 'SEDAN', name: 'Sedan', icon: '🚗', desc: 'Comfortable 4-seater' },
+  { id: 'SUV', name: 'SUV', icon: '🚙', desc: 'Spacious 6-seater' },
+  { id: 'LUXURY', name: 'Luxury', icon: '🏎️', desc: 'Premium experience' },
+  { id: 'MOTORCYCLE', name: 'Bike', icon: '🏍️', desc: 'Quick & affordable' },
+  { id: 'VAN', name: 'Van', icon: '🚐', desc: 'Groups & luggage' },
+];
+
+const paymentMethods = [
+  { id: 'CASH', name: 'Cash', icon: Banknote, desc: 'Pay driver directly' },
+  { id: 'CARD', name: 'Card', icon: CreditCard, desc: 'Credit/Debit card' },
+  { id: 'UPI', name: 'UPI', icon: QrCode, desc: 'Instant transfer' },
+];
+
 const BookRide = () => {
   const navigate = useNavigate();
-  const { success, error, info } = useToast();
-
+  const { success, error } = useToast();
+  const [step, setStep] = useState(1);
+  const [pickupLocation, setPickupLocation] = useState('');
+  const [destination, setDestination] = useState('');
   const [pickupCoords, setPickupCoords] = useState(null);
   const [destinationCoords, setDestinationCoords] = useState(null);
-  const [pickupAddress, setPickupAddress] = useState('');
-  const [destinationAddress, setDestinationAddress] = useState('');
-  
   const [vehicleType, setVehicleType] = useState('SEDAN');
   const [notes, setNotes] = useState('');
-  
-  const [estimatedFare, setEstimatedFare] = useState(null);
-  const [isEstimating, setIsEstimating] = useState(false);
-  const [isBooking, setIsBooking] = useState(false);
-
-  const [mapCenter, setMapCenter] = useState([20.5937, 78.9629]); // Default to center of India
-
-  const [pickupSearchText, setPickupSearchText] = useState("");
-  const [destinationSearchText, setDestinationSearchText] = useState("");
+  const [loading, setLoading] = useState(false);
   const [pickupSuggestions, setPickupSuggestions] = useState([]);
-  const [destinationSuggestions, setDestinationSuggestions] = useState([]);
-
+  const [destSuggestions, setDestSuggestions] = useState([]);
+  const [showPickupDropdown, setShowPickupDropdown] = useState(false);
+  const [showDestDropdown, setShowDestDropdown] = useState(false);
+  const [fareEstimate, setFareEstimate] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('CASH');
+  const searchTimeout = useRef();
 
-  const MapEvents = () => {
-    useMapEvents({
-      click(e) {
-        if (!pickupCoords) {
-          setPickupCoords(e.latlng);
-          info('Pickup location set. Now click on the map to set your destination.');
-        } else if (!destinationCoords) {
-          setDestinationCoords(e.latlng);
-          info('Destination set. You can now estimate the fare.');
-        } else {
-            info('To change location, please reset.');
-        }
-      },
-    });
-    return null;
-  };
+  const handleSearch = async (value, type) => {
+    if (type === 'pickup') setPickupLocation(value);
+    else setDestination(value);
 
-  const handleSearch = async (query, setSuggestions) => {
-    if (!query) {
-      setSuggestions([]);
+    if (searchTimeout.current) clearTimeout(searchTimeout.current);
+    if (value.length < 3) {
+      if (type === 'pickup') setPickupSuggestions([]);
+      else setDestSuggestions([]);
       return;
     }
-    try {
-      const response = await publicApi.get(`/api/locations/search?q=${query}`);
-      setSuggestions(response.data);
-    } catch (err) {
-      error('Failed to search for location.');
-    }
+    searchTimeout.current = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(value)}&limit=5`);
+        const data = await res.json();
+        if (type === 'pickup') { setPickupSuggestions(data); setShowPickupDropdown(true); }
+        else { setDestSuggestions(data); setShowDestDropdown(true); }
+      } catch {}
+    }, 400);
   };
-  
-  const handleSuggestionClick = (suggestion, type) => {
+
+  const handleSuggestionSelect = (suggestion, type) => {
     const coords = { lat: parseFloat(suggestion.lat), lng: parseFloat(suggestion.lon) };
     if (type === 'pickup') {
+      setPickupLocation(suggestion.display_name);
       setPickupCoords(coords);
-      setPickupSearchText(suggestion.display_name);
-      setPickupSuggestions([]);
+      setShowPickupDropdown(false);
     } else {
+      setDestination(suggestion.display_name);
       setDestinationCoords(coords);
-      setDestinationSearchText(suggestion.display_name);
-      setDestinationSuggestions([]);
+      setShowDestDropdown(false);
     }
-    setMapCenter([coords.lat, coords.lng]);
-  };
-
-  const fetchAddress = async (coords, setAddress, setSearchText) => {
-    if (!coords) return;
-    
-    console.log('Fetching address for coordinates:', coords);
-    
-    try {
-      // Try backend API first
-      console.log('Trying backend API...');
-      const response = await publicApi.get(`/api/locations/reverse?lat=${coords.lat}&lon=${coords.lng}`);
-      const data = response.data;
-      const address = data.display_name || 'Address not found';
-      console.log('Backend API success:', address);
-      setAddress(address);
-      if(setSearchText) setSearchText(address);
-      return;
-    } catch (err) {
-      console.log('Backend API failed:', err.response?.status, err.message);
-    }
-    
-    // Fallback: Use BigDataCloud API directly (skip CORS proxy as it's not reliable)
-    try {
-      console.log('Trying BigDataCloud API...');
-      const response = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${coords.lat}&longitude=${coords.lng}&localityLanguage=en`);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log('BigDataCloud API response:', data);
-      
-      // Extract address from BigDataCloud response with more specific details
-      let address = 'Address not found';
-      
-      if (data.localityInfo?.administrative) {
-        const admin = data.localityInfo.administrative;
-        const parts = [];
-        
-        // Try to get the most specific location first
-        if (data.locality && data.locality !== data.city) {
-          parts.push(data.locality);
-        }
-        if (data.city && !parts.includes(data.city)) {
-          parts.push(data.city);
-        }
-        
-        // Add administrative divisions (state, country)
-        if (admin.length > 1) {
-          // Get state/province (usually index 1)
-          const state = admin.find(a => a.adminLevel === 4 || a.order === 5);
-          if (state && !parts.includes(state.name)) {
-            parts.push(state.name);
-          }
-        }
-        
-        // Add country if we have space
-        if (admin.length > 0 && parts.length < 3) {
-          const country = admin[0];
-          if (country && !parts.includes(country.name)) {
-            parts.push(country.name);
-          }
-        }
-        
-        address = parts.join(', ');
-      } else if (data.city && data.countryName) {
-        address = `${data.city}, ${data.countryName}`;
-      } else if (data.locality) {
-        address = data.locality;
-      }
-      
-      // If we still don't have a good address, try alternative fields
-      if (address === 'Address not found' || address.length < 3) {
-        if (data.principalSubdivision && data.countryName) {
-          address = `${data.principalSubdivision}, ${data.countryName}`;
-        } else if (data.continent && data.countryName) {
-          address = `${data.countryName}`;
-        }
-      }
-      
-      console.log('BigDataCloud API success:', address);
-      setAddress(address);
-      if(setSearchText) setSearchText(address);
-      return;
-    } catch (fallbackErr) {
-      console.log('BigDataCloud API failed:', fallbackErr);
-    }
-    
-    // Final fallback: Show coordinates
-    console.log('All APIs failed, using coordinates');
-    const address = `Location: ${coords.lat.toFixed(6)}, ${coords.lng.toFixed(6)}`;
-    setAddress(address);
-    if(setSearchText) setSearchText(address);
-    error('Could not fetch detailed address. Using coordinates instead.');
   };
 
   useEffect(() => {
-    if (pickupCoords) {
-      fetchAddress(pickupCoords, setPickupAddress, setPickupSearchText);
+    if (pickupCoords && destinationCoords) {
+      const R = 6371;
+      const dLat = (destinationCoords.lat - pickupCoords.lat) * Math.PI / 180;
+      const dLng = (destinationCoords.lng - pickupCoords.lng) * Math.PI / 180;
+      const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(pickupCoords.lat * Math.PI / 180) * Math.cos(destinationCoords.lat * Math.PI / 180) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      const distance = R * c;
+      const baseFare = { SEDAN: 12, SUV: 16, LUXURY: 25, MOTORCYCLE: 8, VAN: 20 };
+      const estimate = Math.round((baseFare[vehicleType] || 12) * distance + 30);
+      setFareEstimate(estimate);
     }
-  }, [pickupCoords]);
+  }, [pickupCoords, destinationCoords, vehicleType]);
 
-  useEffect(() => {
-    if (destinationCoords) {
-      fetchAddress(destinationCoords, setDestinationAddress, setDestinationSearchText);
-    }
-  }, [destinationCoords]);
-  
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      handleSearch(pickupSearchText, setPickupSuggestions);
-    }, 500); // Debounce search
-    return () => clearTimeout(handler);
-  }, [pickupSearchText]);
-
-  useEffect(() => {
-    const handler = setTimeout(() => {
-      handleSearch(destinationSearchText, setDestinationSuggestions);
-    }, 500); // Debounce search
-    return () => clearTimeout(handler);
-  }, [destinationSearchText]);
-
-  const handleEstimateFare = async () => {
-    if (!pickupCoords || !destinationCoords) {
-      error('Please set both pickup and destination points on the map.');
-      return;
-    }
-    setIsEstimating(true);
-    setEstimatedFare(null);
-    info('Estimating fare...');
-
-    const tripData = {
-      pickupLatitude: pickupCoords.lat,
-      pickupLongitude: pickupCoords.lng,
-      destinationLatitude: destinationCoords.lat,
-      destinationLongitude: destinationCoords.lng,
-      vehicleType,
-      pickupLocation: pickupAddress,
-      destination: destinationAddress
-    };
-
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!pickupCoords || !destinationCoords) { error('Please select both pickup and destination on the map.'); return; }
+    setLoading(true);
     try {
-      const data = await tripsAPI.estimateFare(tripData);
-      setEstimatedFare(data);
-      success('Fare estimated successfully!');
+      const tripData = {
+        pickupLocation, destination, vehicleType, notes, paymentMethod,
+        pickupLatitude: pickupCoords.lat, pickupLongitude: pickupCoords.lng,
+        destinationLatitude: destinationCoords.lat, destinationLongitude: destinationCoords.lng,
+      };
+      const trip = await tripsAPI.createTrip(tripData);
+      success('Ride booked! Finding drivers...');
+      navigate(`/trips/${trip.id}/select-driver`);
     } catch (err) {
-      error(err.response?.data?.message || 'Failed to estimate fare.');
+      error(err.response?.data?.message || 'Failed to book ride');
     } finally {
-      setIsEstimating(false);
-    }
-  };
-  
-  const handleBookRide = async () => {
-    if (!estimatedFare) {
-        error('Please estimate the fare before booking.');
-        return;
-    }
-    setIsBooking(true);
-    info('Booking your ride...');
-
-    const tripData = {
-        pickupLocation: pickupAddress,
-        destination: destinationAddress,
-        pickupLatitude: pickupCoords.lat,
-        pickupLongitude: pickupCoords.lng,
-        destinationLatitude: destinationCoords.lat,
-        destinationLongitude: destinationCoords.lng,
-        vehicleType,
-        notes,
-        paymentMethod,
-    };
-
-    try {
-        const data = await tripsAPI.bookTrip(tripData);
-        success(`Ride booked successfully! Your trip ID is ${data.id}.`);
-        navigate(`/waiting-for-driver/${data.id}`);
-    } catch (err) {
-        error(err.response?.data?.message || 'Failed to book ride.');
-    } finally {
-        setIsBooking(false);
+      setLoading(false);
     }
   };
 
-  const resetLocations = () => {
-    setPickupCoords(null);
-    setDestinationCoords(null);
-    setPickupAddress('');
-    setDestinationAddress('');
-    setEstimatedFare(null);
-    info('Locations reset. Click on the map to set a new pickup point.');
-  }
+  const steps = [
+    { num: 1, label: 'Location' },
+    { num: 2, label: 'Vehicle' },
+    { num: 3, label: 'Confirm' },
+  ];
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Book Your Ride</h1>
-          <p className="text-gray-600">Click on the map to set your pickup and destination</p>
-        </div>
-
-        <div className="grid lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-lg p-2 h-[600px] flex flex-col">
-              <div id="map" className="flex-grow rounded-md">
-                <MapContainer center={mapCenter} zoom={5} style={{ height: '100%', width: '100%' }}>
-                  <TileLayer
-                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                  />
-                  <MapEvents />
-                  <LocationMarker position={pickupCoords} text="Pickup Location" />
-                  <LocationMarker position={destinationCoords} text="Destination" />
-                  <MapFlyTo center={mapCenter} zoom={13} />
-                </MapContainer>
-              </div>
-            </div>
+    <>
+      <UserHeader />
+      <div className="page-container">
+        <div className="page-content py-6 sm:py-8">
+          {/* Step Indicator */}
+          <div className="flex items-center justify-center gap-2 mb-8">
+            {steps.map((s, i) => (
+              <React.Fragment key={s.num}>
+                <button
+                  onClick={() => { if (s.num < step) setStep(s.num); }}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    s.num === step ? 'bg-brand-600 text-white shadow-sm' :
+                    s.num < step ? 'bg-brand-50 dark:bg-brand-900/20 text-brand-600 dark:text-brand-400 cursor-pointer' :
+                    'bg-surface-100 dark:bg-surface-800 text-surface-400'
+                  }`}
+                >
+                  <span className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold bg-white/20">{s.num}</span>
+                  <span className="hidden sm:inline">{s.label}</span>
+                </button>
+                {i < steps.length - 1 && <div className={`w-8 h-0.5 ${s.num < step ? 'bg-brand-400' : 'bg-surface-200 dark:bg-surface-700'}`} />}
+              </React.Fragment>
+            ))}
           </div>
 
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-lg p-6 sticky top-8 space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">1. Select Locations</h3>
-                <div className="space-y-3 relative">
-                    <div className="flex items-start gap-3">
-                        <MapPin className="w-5 h-5 mt-2.5 text-blue-500"/>
-                        <div className="w-full">
-                            <label className="font-semibold text-sm">Pickup</label>
-                            <input 
-                              type="text"
-                              value={pickupSearchText}
-                              onChange={(e) => setPickupSearchText(e.target.value)}
-                              placeholder="Type a pickup location"
-                              className="w-full text-xs p-1 border-b-2 border-gray-200 focus:border-blue-500 outline-none"
-                            />
-                            {pickupSuggestions.length > 0 && (
-                              <ul className="absolute bg-white border border-gray-300 rounded-md mt-1 w-full z-10 max-h-40 overflow-y-auto">
-                                {pickupSuggestions.map(s => (
-                                  <li key={s.place_id} onClick={() => handleSuggestionClick(s, 'pickup')} className="p-2 text-xs cursor-pointer hover:bg-gray-100">
-                                    {s.display_name}
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
+          <div className="grid lg:grid-cols-2 gap-6">
+            {/* Map */}
+            <div className="card overflow-hidden h-[400px] lg:h-auto lg:min-h-[500px]">
+              <MapContainer center={[20.5937, 78.9629]} zoom={5} style={{ height: '100%', width: '100%' }}>
+                <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                <LocationPicker onClick={(latlng) => {
+                  if (!pickupCoords) {
+                    setPickupCoords(latlng);
+                    setPickupLocation(`${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`);
+                  } else if (!destinationCoords) {
+                    setDestinationCoords(latlng);
+                    setDestination(`${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`);
+                  }
+                }} />
+                {pickupCoords && <Marker position={pickupCoords}><Popup>Pickup</Popup></Marker>}
+                {destinationCoords && <Marker position={destinationCoords} icon={greenIcon}><Popup>Destination</Popup></Marker>}
+                {pickupCoords && destinationCoords && <Polyline positions={[pickupCoords, destinationCoords]} color="#3366ff" />}
+              </MapContainer>
+            </div>
+
+            {/* Form Panel */}
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              {/* Step 1: Location */}
+              {step === 1 && (
+                <div className="card p-6 space-y-5 animate-fade-in">
+                  <h2 className="section-title">Where to?</h2>
+                  <div>
+                    <label className="input-label">Pickup Location</label>
+                    <div className="relative">
+                      <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-500" />
+                      <input type="text" value={pickupLocation} onChange={(e) => handleSearch(e.target.value, 'pickup')} className="input pl-11" placeholder="Enter pickup address" required />
+                      {showPickupDropdown && pickupSuggestions.length > 0 && (
+                        <div className="absolute z-30 left-0 right-0 mt-1 bg-white dark:bg-surface-800 rounded-xl shadow-elevated border border-surface-200 dark:border-surface-700 max-h-48 overflow-y-auto">
+                          {pickupSuggestions.map((s, i) => (
+                            <button key={i} type="button" onClick={() => handleSuggestionSelect(s, 'pickup')} className="w-full text-left px-4 py-3 text-sm hover:bg-surface-50 dark:hover:bg-surface-700 transition-colors border-b border-surface-100 dark:border-surface-700/50 last:border-0">
+                              {s.display_name}
+                            </button>
+                          ))}
                         </div>
+                      )}
                     </div>
-                    <div className="flex items-start gap-3">
-                        <Navigation className="w-5 h-5 mt-2.5 text-green-500"/>
-                        <div className="w-full">
-                           <label className="font-semibold text-sm">Destination</label>
-                            <input 
-                              type="text"
-                              value={destinationSearchText}
-                              onChange={(e) => setDestinationSearchText(e.target.value)}
-                              placeholder="Type a destination location"
-                              className="w-full text-xs p-1 border-b-2 border-gray-200 focus:border-green-500 outline-none"
-                            />
-                             {destinationSuggestions.length > 0 && (
-                              <ul className="absolute bg-white border border-gray-300 rounded-md mt-1 w-full z-10 max-h-40 overflow-y-auto">
-                                {destinationSuggestions.map(s => (
-                                  <li key={s.place_id} onClick={() => handleSuggestionClick(s, 'destination')} className="p-2 text-xs cursor-pointer hover:bg-gray-100">
-                                    {s.display_name}
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
+                  </div>
+                  <div>
+                    <label className="input-label">Destination</label>
+                    <div className="relative">
+                      <Navigation className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-500" />
+                      <input type="text" value={destination} onChange={(e) => handleSearch(e.target.value, 'destination')} className="input pl-11" placeholder="Enter destination address" required />
+                      {showDestDropdown && destSuggestions.length > 0 && (
+                        <div className="absolute z-30 left-0 right-0 mt-1 bg-white dark:bg-surface-800 rounded-xl shadow-elevated border border-surface-200 dark:border-surface-700 max-h-48 overflow-y-auto">
+                          {destSuggestions.map((s, i) => (
+                            <button key={i} type="button" onClick={() => handleSuggestionSelect(s, 'destination')} className="w-full text-left px-4 py-3 text-sm hover:bg-surface-50 dark:hover:bg-surface-700 transition-colors border-b border-surface-100 dark:border-surface-700/50 last:border-0">
+                              {s.display_name}
+                            </button>
+                          ))}
                         </div>
+                      )}
                     </div>
+                  </div>
+                  <button type="button" onClick={() => setStep(2)} disabled={!pickupLocation || !destination} className="btn-primary w-full">
+                    Continue
+                  </button>
                 </div>
-                 <button onClick={resetLocations} className="text-xs text-blue-500 hover:underline mt-2">Reset Locations</button>
-              </div>
-              
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">2. Choose Vehicle</h3>
-                 <div className="grid grid-cols-3 gap-2">
-                    {vehicleTypes.map((vehicle) => (
-                      <button
-                        key={vehicle.id}
-                        type="button"
-                        onClick={() => setVehicleType(vehicle.id)}
-                        className={`p-3 rounded-lg border-2 text-center transition-all duration-200 ${
-                          vehicleType === vehicle.id ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:border-gray-300'
-                        }`}
-                      >
-                        <div className="text-xl">{vehicle.icon}</div>
-                        <div className="text-xs font-semibold text-gray-800">{vehicle.name}</div>
+              )}
+
+              {/* Step 2: Vehicle */}
+              {step === 2 && (
+                <div className="card p-6 space-y-5 animate-fade-in">
+                  <h2 className="section-title">Choose Vehicle</h2>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {vehicleTypes.map(v => (
+                      <button key={v.id} type="button" onClick={() => setVehicleType(v.id)}
+                        className={`p-4 rounded-xl border-2 transition-all duration-200 text-center ${
+                          vehicleType === v.id
+                            ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20'
+                            : 'border-surface-200 dark:border-surface-700 hover:border-surface-300 dark:hover:border-surface-600'
+                        }`}>
+                        <div className="text-2xl mb-1">{v.icon}</div>
+                        <div className="text-sm font-semibold text-surface-900 dark:text-white">{v.name}</div>
+                        <div className="text-xs text-surface-400">{v.desc}</div>
                       </button>
                     ))}
                   </div>
-              </div>
-              
-               <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">3. Get Fare Estimate</h3>
-                <button
-                  onClick={handleEstimateFare}
-                  disabled={isEstimating || !pickupCoords || !destinationCoords}
-                  className="w-full bg-gray-800 hover:bg-gray-900 disabled:bg-gray-400 text-white py-2.5 px-4 rounded-lg font-semibold transition-colors duration-200 flex items-center justify-center gap-2"
-                >
-                  {isEstimating ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      Estimating...
-                    </>
-                  ) : (
-                    <>
-                      <Search className="w-5 h-5" />
-                      Estimate Fare
-                    </>
-                  )}
-                </button>
-                {estimatedFare && (
-                   <div className="mt-4 bg-green-50 border border-green-200 rounded-lg p-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm text-gray-600">Estimated Fare</span>
-                      <span className="text-xl font-bold text-green-600">₹{estimatedFare.estimatedFare.toFixed(2)}</span>
+
+                  {fareEstimate && (
+                    <div className="card p-4 bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800/30">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-surface-600 dark:text-surface-400">Estimated Fare</span>
+                        <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-400 flex items-center">
+                          <IndianRupee className="w-5 h-5" />{fareEstimate}
+                        </span>
+                      </div>
                     </div>
-                    <div className="text-xs text-gray-500 mt-1">
-                      Distance: {estimatedFare.distance.toFixed(2)} km
+                  )}
+
+                  <div className="flex gap-3">
+                    <button type="button" onClick={() => setStep(1)} className="btn-secondary flex-1">Back</button>
+                    <button type="button" onClick={() => setStep(3)} className="btn-primary flex-1">Continue</button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3: Confirm */}
+              {step === 3 && (
+                <div className="card p-6 space-y-5 animate-fade-in">
+                  <h2 className="section-title">Confirm & Pay</h2>
+
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center mt-0.5">
+                        <MapPin className="w-4 h-4 text-brand-600 dark:text-brand-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-surface-500 uppercase">From</p>
+                        <p className="text-sm text-surface-900 dark:text-white truncate">{pickupLocation}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center mt-0.5">
+                        <Navigation className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-xs font-medium text-surface-500 uppercase">To</p>
+                        <p className="text-sm text-surface-900 dark:text-white truncate">{destination}</p>
+                      </div>
                     </div>
                   </div>
-                )}
-              </div>
 
-              <div className="mb-4">
-                <label className="block text-gray-700 font-semibold mb-2">Payment Method</label>
-                <div className="flex gap-4">
-                  <label>
-                    <input type="radio" name="paymentMethod" value="CASH" checked={paymentMethod === 'CASH'} onChange={() => setPaymentMethod('CASH')} />
-                    <span className="ml-2">Cash</span>
-                  </label>
-                  <label>
-                    <input type="radio" name="paymentMethod" value="CARD" checked={paymentMethod === 'CARD'} onChange={() => setPaymentMethod('CARD')} />
-                    <span className="ml-2">Credit/Debit Card</span>
-                  </label>
-                  <label>
-                    <input type="radio" name="paymentMethod" value="UPI" checked={paymentMethod === 'UPI'} onChange={() => setPaymentMethod('UPI')} />
-                    <span className="ml-2">UPI</span>
-                  </label>
+                  <div className="divider" />
+
+                  {/* Payment Method */}
+                  <div>
+                    <label className="input-label">Payment Method</label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {paymentMethods.map(pm => {
+                        const Icon = pm.icon;
+                        return (
+                          <button key={pm.id} type="button" onClick={() => setPaymentMethod(pm.id)}
+                            className={`p-3 rounded-xl border-2 text-center transition-all duration-200 ${
+                              paymentMethod === pm.id
+                                ? 'border-brand-500 bg-brand-50 dark:bg-brand-900/20'
+                                : 'border-surface-200 dark:border-surface-700 hover:border-surface-300 dark:hover:border-surface-600'
+                            }`}>
+                            <Icon className="w-5 h-5 mx-auto mb-1 text-surface-600 dark:text-surface-400" />
+                            <span className="text-xs font-semibold text-surface-900 dark:text-white">{pm.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  <div>
+                    <label className="input-label">Notes (optional)</label>
+                    <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="input" rows="2" placeholder="Any special instructions..." />
+                  </div>
+
+                  {fareEstimate && (
+                    <div className="card p-4 bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800/30">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium text-surface-600 dark:text-surface-400">Total Fare</span>
+                        <span className="text-2xl font-bold text-emerald-700 dark:text-emerald-400 flex items-center">
+                          <IndianRupee className="w-5 h-5" />{fareEstimate}
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex gap-3">
+                    <button type="button" onClick={() => setStep(2)} className="btn-secondary flex-1">Back</button>
+                    <button type="submit" disabled={loading} className="btn-primary flex-1">
+                      {loading ? <><Loader2 className="w-5 h-5 animate-spin" /> Finding Drivers...</> : 'Book Ride'}
+                    </button>
+                  </div>
                 </div>
-              </div>
-
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-3">4. Book Your Ride</h3>
-                 <button
-                    onClick={handleBookRide}
-                    disabled={isBooking || !estimatedFare}
-                    className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white py-3 px-6 rounded-lg font-semibold transition-colors duration-200 flex items-center justify-center gap-2"
-                >
-                    {isBooking ? 'Booking...' : 'Confirm & Book Ride'}
-                </button>
-              </div>
-            </div>
+              )}
+            </form>
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
-export default BookRide; 
+export default BookRide;

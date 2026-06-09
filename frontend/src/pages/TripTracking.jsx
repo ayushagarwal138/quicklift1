@@ -7,7 +7,8 @@ import SockJS from 'sockjs-client';
 import { tripsAPI } from '../api/trips';
 import { getAuthenticatedWsUrl, getStompConnectHeaders } from '../api/ws';
 import { useToast } from '../context/ToastContext';
-import { Car, MapPin, Navigation, User, CheckCircle, Clock, Send } from 'lucide-react';
+import { MapPin, Navigation, User, Send, IndianRupee, Phone } from 'lucide-react';
+import UserHeader from '../components/Header';
 
 // Fix for default marker icon
 delete L.Icon.Default.prototype._getIconUrl;
@@ -35,6 +36,11 @@ const TripTracking = () => {
   const stompClient = useRef(null);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState('');
+  const chatEndRef = useRef(null);
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
 
   useEffect(() => {
     const fetchTripData = async () => {
@@ -42,7 +48,6 @@ const TripTracking = () => {
         const tripData = await tripsAPI.getTripById(tripId);
         setTrip(tripData);
         if (tripData.driver) {
-           // Set initial driver location if available, otherwise use pickup location
            setDriverLocation({ 
                lat: tripData.driver.currentLatitude || tripData.pickupLatitude,
                lng: tripData.driver.currentLongitude || tripData.pickupLongitude
@@ -57,21 +62,17 @@ const TripTracking = () => {
 
     fetchTripData();
     
-    // Setup WebSocket connection
     const socketFactory = () => new SockJS(getAuthenticatedWsUrl());
-    
     const client = new Client({
         webSocketFactory: socketFactory,
         connectHeaders: getStompConnectHeaders(),
-        debug: (str) => {
-            console.log(new Date(), str);
-        },
+        debug: () => {},
         reconnectDelay: 5000,
         heartbeatIncoming: 4000,
         heartbeatOutgoing: 4000,
     });
 
-    client.onConnect = (frame) => {
+    client.onConnect = () => {
         info('Connected to trip tracking!');
         client.subscribe(`/topic/trip/${tripId}/location`, (message) => {
             const locationUpdate = JSON.parse(message.body);
@@ -82,22 +83,15 @@ const TripTracking = () => {
             setTrip(updatedTrip);
         });
         client.subscribe(`/topic/trip/${tripId}/chat`, (message) => {
-            setChatMessages((prev) => [...prev, { sender: 'other', text: message.body }]);
+            setChatMessages((prev) => [...prev, { sender: 'driver', text: message.body, time: new Date() }]);
         });
-    };
-
-    client.onStompError = (frame) => {
-        console.error('Broker reported error: ' + frame.headers['message']);
-        console.error('Additional details: ' + frame.body);
     };
 
     client.activate();
     stompClient.current = client;
 
     return () => {
-      if (stompClient.current) {
-        stompClient.current.deactivate();
-      }
+      if (stompClient.current) stompClient.current.deactivate();
     };
   }, [tripId, error, info]);
   
@@ -106,133 +100,191 @@ const TripTracking = () => {
       navigate(`/payment/${trip.id}`);
     }
   }, [trip, navigate]);
+
+  const sendChatMessage = () => {
+    if (chatInput.trim() && stompClient.current?.connected) {
+      stompClient.current.publish({ destination: `/app/chat/${tripId}`, body: chatInput });
+      setChatMessages((prev) => [...prev, { sender: 'me', text: chatInput, time: new Date() }]);
+      setChatInput('');
+    }
+  };
   
-  if (isLoading) return <div className="text-center py-10">Loading Trip Details...</div>;
-  if (!trip) return <div className="text-center py-10">Trip not found.</div>;
+  if (isLoading) return (
+    <>
+      <UserHeader />
+      <div className="page-container"><div className="page-content py-8"><div className="skeleton h-[500px] rounded-2xl" /></div></div>
+    </>
+  );
+  if (!trip) return (
+    <>
+      <UserHeader />
+      <div className="page-container flex items-center justify-center min-h-[60vh]"><p className="text-surface-500">Trip not found.</p></div>
+    </>
+  );
   
   const pickupPosition = [trip.pickupLatitude, trip.pickupLongitude];
   const destinationPosition = [trip.destinationLatitude, trip.destinationLongitude];
   const driverPosition = driverLocation ? [driverLocation.lat, driverLocation.lng] : null;
-  
   const bounds = [pickupPosition, destinationPosition];
-  if (driverPosition) {
-      bounds.push(driverPosition);
-  }
+  if (driverPosition) bounds.push(driverPosition);
 
-  const sendChatMessage = () => {
-    if (chatInput.trim() && stompClient.current && stompClient.current.connected) {
-      stompClient.current.publish({
-        destination: `/app/chat/${tripId}`,
-        body: chatInput,
-      });
-      setChatMessages((prev) => [...prev, { sender: 'me', text: chatInput }]);
-      setChatInput('');
+  const getStatusStep = (status) => {
+    switch(status) {
+      case 'REQUESTED': return 1;
+      case 'ACCEPTED': return 2;
+      case 'STARTED': return 3;
+      case 'COMPLETED': return 4;
+      default: return 0;
     }
   };
+  const statusSteps = ['Requested', 'Accepted', 'In Progress', 'Completed'];
+  const currentStep = getStatusStep(trip.status);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-        <div className="max-w-6xl mx-auto py-8 px-4">
-             <div className="text-center mb-8">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">Tracking Your Trip</h1>
-                <p className="text-gray-600">Trip ID: {trip.id}</p>
+    <>
+      <UserHeader />
+      <div className="page-container">
+        <div className="page-content py-6 sm:py-8">
+          {/* Status Steps */}
+          <div className="card p-4 mb-6">
+            <div className="flex items-center justify-between">
+              {statusSteps.map((label, i) => (
+                <React.Fragment key={i}>
+                  <div className="flex flex-col items-center">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                      i + 1 <= currentStep 
+                        ? 'bg-brand-600 text-white' 
+                        : 'bg-surface-100 dark:bg-surface-700 text-surface-400'
+                    }`}>
+                      {i + 1 <= currentStep ? '✓' : i + 1}
+                    </div>
+                    <span className="text-xs mt-1.5 text-surface-500 dark:text-surface-400 hidden sm:block">{label}</span>
+                  </div>
+                  {i < statusSteps.length - 1 && (
+                    <div className={`flex-1 h-0.5 mx-2 ${i + 1 < currentStep ? 'bg-brand-500' : 'bg-surface-200 dark:bg-surface-700'}`} />
+                  )}
+                </React.Fragment>
+              ))}
             </div>
-            
-             <div className="grid lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 bg-white rounded-lg shadow-lg p-2 h-[600px] flex flex-col">
-                    <MapContainer bounds={bounds} style={{ height: '100%', width: '100%' }} boundsOptions={{ padding: [50, 50] }}>
-                        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-                        <Marker position={pickupPosition}>
-                            <Popup>Pickup: {trip.pickupLocation}</Popup>
-                        </Marker>
-                        <Marker position={destinationPosition}>
-                            <Popup>Destination: {trip.destination}</Popup>
-                        </Marker>
-                        {driverPosition && (
-                             <Marker position={driverPosition} icon={driverIcon}>
-                                <Popup>Your driver is here.</Popup>
-                            </Marker>
-                        )}
-                        <Polyline positions={[pickupPosition, destinationPosition]} color="blue" />
-                    </MapContainer>
-                    {/* Chat Box */}
-                    <div className="mt-4 flex flex-col flex-grow justify-end">
-                      <div className="bg-gray-100 rounded-lg p-4 h-64 overflow-y-auto flex flex-col-reverse">
-                        {[...chatMessages].reverse().map((msg, idx) => (
-                          <div key={idx} className={`mb-2 flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
-                            <div className={`px-3 py-2 rounded-lg max-w-xs ${msg.sender === 'me' ? 'bg-blue-500 text-white' : 'bg-white text-gray-800 border'}`}>{msg.text}</div>
-                          </div>
-                        ))}
-                      </div>
-                      <div className="flex mt-2">
-                        <input
-                          type="text"
-                          value={chatInput}
-                          onChange={e => setChatInput(e.target.value)}
-                          onKeyDown={e => { if (e.key === 'Enter') sendChatMessage(); }}
-                          className="flex-grow px-3 py-2 rounded-l-lg border border-gray-300 focus:outline-none focus:ring-blue-500"
-                          placeholder="Type a message..."
-                        />
-                        <button
-                          onClick={sendChatMessage}
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-r-lg flex items-center"
-                        >
-                          <Send className="w-5 h-5" />
-                        </button>
+          </div>
+
+          <div className="grid lg:grid-cols-3 gap-6">
+            {/* Map + Chat */}
+            <div className="lg:col-span-2 space-y-4">
+              <div className="card overflow-hidden h-[400px]">
+                <MapContainer bounds={bounds} style={{ height: '100%', width: '100%' }} boundsOptions={{ padding: [50, 50] }}>
+                    <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                    <Marker position={pickupPosition}><Popup>Pickup: {trip.pickupLocation}</Popup></Marker>
+                    <Marker position={destinationPosition}><Popup>Destination: {trip.destination}</Popup></Marker>
+                    {driverPosition && <Marker position={driverPosition} icon={driverIcon}><Popup>Your driver</Popup></Marker>}
+                    <Polyline positions={[pickupPosition, destinationPosition]} color="#3366ff" />
+                </MapContainer>
+              </div>
+
+              {/* Chat */}
+              <div className="card overflow-hidden">
+                <div className="p-4 border-b border-surface-100 dark:border-surface-700/50">
+                  <h3 className="text-sm font-semibold text-surface-900 dark:text-white">Chat with Driver</h3>
+                </div>
+                <div className="h-48 overflow-y-auto p-4 space-y-2 bg-surface-50 dark:bg-surface-800/50">
+                  {chatMessages.length === 0 && (
+                    <p className="text-center text-sm text-surface-400 py-8">No messages yet</p>
+                  )}
+                  {chatMessages.map((msg, idx) => (
+                    <div key={idx} className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`max-w-[80%] px-4 py-2 rounded-2xl text-sm ${
+                        msg.sender === 'me'
+                          ? 'bg-brand-600 text-white rounded-br-md'
+                          : 'bg-white dark:bg-surface-700 text-surface-900 dark:text-white border border-surface-200 dark:border-surface-600 rounded-bl-md'
+                      }`}>
+                        {msg.text}
                       </div>
                     </div>
+                  ))}
+                  <div ref={chatEndRef} />
                 </div>
-                
-                <div className="lg:col-span-1 space-y-6">
-                    <div className="bg-white rounded-lg shadow-lg p-6">
-                        <h3 className="text-xl font-semibold text-gray-900 mb-4">Trip Status: {trip.status}</h3>
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-3">
-                                <MapPin className="w-5 h-5 text-blue-500" />
-                                <div>
-                                    <p className="font-semibold text-sm">From</p>
-                                    <p className="text-xs text-gray-600">{trip.pickupLocation}</p>
-                                </div>
-                            </div>
-                            <div className="flex items-center gap-3">
-                                <Navigation className="w-5 h-5 text-green-500" />
-                                <div>
-                                    <p className="font-semibold text-sm">To</p>
-                                    <p className="text-xs text-gray-600">{trip.destination}</p>
-                                </div>
-                            </div>
-                        </div>
-                        {trip.status === 'COMPLETED' && !trip.paid && trip.paymentMethod !== 'CASH' && (
-                          <button
-                            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 px-6 rounded-lg font-semibold transition-colors duration-200 mt-4"
-                            onClick={() => navigate(`/payment/${trip.id}`)}
-                          >
-                            Pay Now
-                          </button>
-                        )}
-                        {trip.status === 'COMPLETED' && trip.paid && (
-                          <div className="text-green-600 font-semibold mt-4">Payment completed</div>
-                        )}
-                    </div>
-                     {trip.driver && (
-                        <div className="bg-white rounded-lg shadow-lg p-6">
-                            <h3 className="text-xl font-semibold text-gray-900 mb-4">Driver Details</h3>
-                             <div className="flex items-center space-x-3">
-                                <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center">
-                                    <User className="w-6 h-6 text-gray-600" />
-                                </div>
-                                <div>
-                                    <p className="font-medium">{trip.driver.user.username}</p>
-                                    <p className="text-sm text-gray-500">{trip.driver.vehicleType} - {trip.driver.vehiclePlateNumber}</p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                <div className="p-3 border-t border-surface-100 dark:border-surface-700/50 flex gap-2">
+                  <input
+                    type="text" value={chatInput}
+                    onChange={e => setChatInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') sendChatMessage(); }}
+                    className="input flex-1" placeholder="Type a message..."
+                  />
+                  <button onClick={sendChatMessage} className="btn-primary btn-icon">
+                    <Send className="w-4 h-4" />
+                  </button>
                 </div>
+              </div>
             </div>
+
+            {/* Sidebar */}
+            <div className="space-y-4">
+              {/* Trip Info */}
+              <div className="card p-5">
+                <h3 className="section-title mb-4 flex items-center gap-2">
+                  <span className="badge-info">{trip.status}</span>
+                </h3>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="w-7 h-7 rounded-lg bg-brand-50 dark:bg-brand-900/20 flex items-center justify-center mt-0.5">
+                      <MapPin className="w-3.5 h-3.5 text-brand-600 dark:text-brand-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-surface-500 uppercase">From</p>
+                      <p className="text-sm text-surface-900 dark:text-white">{trip.pickupLocation}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3">
+                    <div className="w-7 h-7 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center mt-0.5">
+                      <Navigation className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-medium text-surface-500 uppercase">To</p>
+                      <p className="text-sm text-surface-900 dark:text-white">{trip.destination}</p>
+                    </div>
+                  </div>
+                </div>
+                {trip.fare && (
+                  <div className="mt-4 pt-4 border-t border-surface-100 dark:border-surface-700/50 flex items-center justify-between">
+                    <span className="text-sm text-surface-500">Fare</span>
+                    <span className="flex items-center gap-1 text-lg font-bold text-surface-900 dark:text-white">
+                      <IndianRupee className="w-4 h-4" />{trip.fare.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+                {trip.status === 'COMPLETED' && !trip.paid && (
+                  <button className="btn-primary w-full mt-4" onClick={() => navigate(`/payment/${trip.id}`)}>
+                    Pay Now
+                  </button>
+                )}
+                {trip.status === 'COMPLETED' && trip.paid && (
+                  <div className="mt-4 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-900/10 text-center">
+                    <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">✓ Payment completed</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Driver Info */}
+              {trip.driver && (
+                <div className="card p-5">
+                  <h3 className="text-sm font-semibold text-surface-900 dark:text-white mb-4">Driver</h3>
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-surface-100 dark:bg-surface-700 rounded-full flex items-center justify-center">
+                      <User className="w-6 h-6 text-surface-500 dark:text-surface-400" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-surface-900 dark:text-white">{trip.driver.user.username}</p>
+                      <p className="text-xs text-surface-500">{trip.driver.vehicleType} • {trip.driver.vehiclePlateNumber}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-    </div>
+      </div>
+    </>
   );
 };
 
-export default TripTracking; 
+export default TripTracking;
