@@ -63,7 +63,7 @@ const Home = () => {
                 <span className="flex h-2 w-2 rounded-full bg-brand-500"></span>
                 Now available in your city
               </div>
-              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-extrabold text-surface-900 dark:text-white tracking-tight leading-[1.1] mb-6 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
+              <h1 className="text-4xl sm:text-5xl lg:text-7xl font-extrabold text-surface-900 dark:text-white tracking-tight leading-[1.1] mb-6 animate-fade-in-up" style={{ animationDelay: '100ms' }}>
                 Your journey,<br />
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-brand-600 to-indigo-600 dark:from-brand-400 dark:to-indigo-400">
                   elevated.
@@ -89,30 +89,30 @@ const Home = () => {
                 <img 
                   src="https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&q=80&w=1200" 
                   alt="QuickLift App" 
-                  className="rounded-[2rem] object-cover w-full h-[400px] sm:h-[500px]"
+                  className="rounded-[2rem] object-cover w-full h-[300px] sm:h-[400px] lg:h-[500px]"
                 />
                 
                 {/* Floating Cards */}
-                <div className="absolute -left-6 lg:-left-12 top-10 glass p-4 rounded-2xl shadow-xl animate-bounce-subtle">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-emerald-100 dark:bg-emerald-900/40 rounded-full flex items-center justify-center">
-                      <Shield className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
+                <div className="absolute left-2 sm:-left-6 lg:-left-12 top-4 sm:top-10 glass p-3 sm:p-4 rounded-2xl shadow-xl animate-bounce-subtle z-10">
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-emerald-100 dark:bg-emerald-900/40 rounded-full flex items-center justify-center">
+                      <Shield className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-600 dark:text-emerald-400" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-surface-900 dark:text-white">100% Secure</p>
-                      <p className="text-xs text-surface-500 dark:text-surface-400">Verified drivers</p>
+                      <p className="text-xs sm:text-sm font-bold text-surface-900 dark:text-white">100% Secure</p>
+                      <p className="text-[10px] sm:text-xs text-surface-500 dark:text-surface-400">Verified drivers</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="absolute -right-6 lg:-right-8 bottom-10 glass p-4 rounded-2xl shadow-xl animate-bounce-subtle" style={{ animationDelay: '1s' }}>
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-brand-100 dark:bg-brand-900/40 rounded-full flex items-center justify-center">
-                      <Star className="w-6 h-6 text-brand-600 dark:text-brand-400" />
+                <div className="absolute right-2 sm:-right-6 lg:-right-8 bottom-4 sm:bottom-10 glass p-3 sm:p-4 rounded-2xl shadow-xl animate-bounce-subtle z-10" style={{ animationDelay: '1s' }}>
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-brand-100 dark:bg-brand-900/40 rounded-full flex items-center justify-center">
+                      <Star className="w-5 h-5 sm:w-6 sm:h-6 text-brand-600 dark:text-brand-400" />
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-surface-900 dark:text-white">4.9/5 Rating</p>
-                      <p className="text-xs text-surface-500 dark:text-surface-400">10k+ reviews</p>
+                      <p className="text-xs sm:text-sm font-bold text-surface-900 dark:text-white">4.9/5 Rating</p>
+                      <p className="text-[10px] sm:text-xs text-surface-500 dark:text-surface-400">10k+ reviews</p>
                     </div>
                   </div>
                 </div>
@@ -198,7 +198,7 @@ const Home = () => {
               <img 
                 src="https://images.unsplash.com/photo-1556122071-e404eaedb77f?auto=format&fit=crop&q=80&w=800" 
                 alt="Passenger in car" 
-                className="relative rounded-[3rem] shadow-2xl object-cover h-[600px] w-full"
+                className="relative rounded-[3rem] shadow-2xl object-cover h-[350px] sm:h-[450px] lg:h-[600px] w-full"
               />
             </div>
           </div>

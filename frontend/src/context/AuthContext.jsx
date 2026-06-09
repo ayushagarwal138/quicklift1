@@ -13,7 +13,7 @@ export const useAuth = () => {
 };
 
 const normalizeUser = (data) => {
-  const roles = data?.roles || [];
+  const roles = (data?.roles || []).map(r => r.replace(/^ROLE_/, ''));
   return {
     id: data?.id,
     username: data?.username,
