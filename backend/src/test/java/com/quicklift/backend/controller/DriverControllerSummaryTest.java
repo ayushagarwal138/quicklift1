@@ -109,6 +109,32 @@ class DriverControllerSummaryTest {
         assertEquals(0L, summary.getHistoryTrips());
     }
 
+    @Test
+    void getDriverSummaryFallsBackToZeroForMalformedAggregateValues() {
+        User user = user(1L, "driver-user");
+        Driver driver = driver(7L, user);
+        when(userService.findByUsername("driver-user")).thenReturn(Optional.of(user));
+        when(driverRepository.findByUserId(1L)).thenReturn(Optional.of(driver));
+        when(tripRepository.getDriverSummaryAggregate(7L)).thenReturn(new Object[]{
+            "999.99",
+            "4.25x",
+            "2",
+            "invalid",
+            null,
+        });
+
+        ResponseEntity<?> response = driverController.getDriverSummary();
+
+        assertEquals(200, response.getStatusCode().value());
+        DriverSummaryResponse summary = (DriverSummaryResponse) response.getBody();
+        assertNotNull(summary);
+        assertEquals(0, new BigDecimal("999.99").compareTo(summary.getEarnings()));
+        assertEquals(0, BigDecimal.ZERO.compareTo(summary.getRating()));
+        assertEquals(2L, summary.getActiveTrips());
+        assertEquals(0L, summary.getPendingRequests());
+        assertEquals(0L, summary.getHistoryTrips());
+    }
+
     private static User user(Long id, String username) {
         User user = new User();
         user.setId(id);

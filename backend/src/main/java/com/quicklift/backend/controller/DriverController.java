@@ -39,39 +39,8 @@ public class DriverController {
 
     @Autowired
     private DriverRepository driverRepository;
-
     @Autowired
     private TripRepository tripRepository;
-
-    private Object valueAt(Object[] aggregate, int index) {
-        if (aggregate == null || index < 0 || index >= aggregate.length) {
-            return null;
-        }
-        return aggregate[index];
-    }
-
-    private BigDecimal toBigDecimal(Object value) {
-        if (value == null) {
-            return BigDecimal.ZERO;
-        }
-        if (value instanceof BigDecimal decimal) {
-            return decimal;
-        }
-        if (value instanceof Number number) {
-            return new BigDecimal(number.toString());
-        }
-        return new BigDecimal(value.toString());
-    }
-
-    private long toLong(Object value) {
-        if (value == null) {
-            return 0L;
-        }
-        if (value instanceof Number number) {
-            return number.longValue();
-        }
-        return Long.parseLong(value.toString());
-    }
 
     private User getAuthenticatedUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
@@ -192,11 +161,49 @@ public class DriverController {
         Driver driver = driverRepository.findByUserId(user.getId())
             .orElseThrow(() -> new RuntimeException("Driver profile not found for the authenticated user."));
         Object[] aggregate = tripRepository.getDriverSummaryAggregate(driver.getId());
-        BigDecimal earnings = toBigDecimal(valueAt(aggregate, 0));
-        BigDecimal rating = toBigDecimal(valueAt(aggregate, 1));
-        long activeTrips = toLong(valueAt(aggregate, 2));
-        long pendingRequests = toLong(valueAt(aggregate, 3));
-        long historyTrips = toLong(valueAt(aggregate, 4));
-        return ResponseEntity.ok(new DriverSummaryResponse(earnings, rating, activeTrips, pendingRequests, historyTrips));
+        return ResponseEntity.ok(toDriverSummaryResponse(aggregate));
+    }
+
+    private DriverSummaryResponse toDriverSummaryResponse(Object[] aggregate) {
+        if (aggregate == null || aggregate.length < 5) {
+            return new DriverSummaryResponse(BigDecimal.ZERO, BigDecimal.ZERO, 0L, 0L, 0L);
+        }
+        BigDecimal earnings = safeToBigDecimal(aggregate[0]);
+        BigDecimal rating = safeToBigDecimal(aggregate[1]);
+        long activeTrips = safeToLong(aggregate[2]);
+        long pendingRequests = safeToLong(aggregate[3]);
+        long historyTrips = safeToLong(aggregate[4]);
+        return new DriverSummaryResponse(earnings, rating, activeTrips, pendingRequests, historyTrips);
+    }
+
+    private BigDecimal safeToBigDecimal(Object value) {
+        if (value == null) {
+            return BigDecimal.ZERO;
+        }
+        if (value instanceof BigDecimal bigDecimal) {
+            return bigDecimal;
+        }
+        if (value instanceof Number number) {
+            return BigDecimal.valueOf(number.doubleValue());
+        }
+        try {
+            return new BigDecimal(value.toString().trim());
+        } catch (NumberFormatException ex) {
+            return BigDecimal.ZERO;
+        }
+    }
+
+    private long safeToLong(Object value) {
+        if (value == null) {
+            return 0L;
+        }
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        try {
+            return Long.parseLong(value.toString().trim());
+        } catch (NumberFormatException ex) {
+            return 0L;
+        }
     }
 }
