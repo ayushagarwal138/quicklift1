@@ -84,7 +84,9 @@ const DriverDashboard = () => {
             }
             setRating(avgRating);
 
-            setPendingRequestsCount(Number(summary?.pendingRequests ?? sortedPendingTrips.length));
+            // Use actual pending trips count as fallback if summary returns 0
+            const summaryPending = Number(summary?.pendingRequests ?? 0);
+            setPendingRequestsCount(summaryPending || sortedPendingTrips.length);
         } catch (err) {
             error(err.response?.data?.message || 'Failed to fetch dashboard data.');
             setEarnings(0);

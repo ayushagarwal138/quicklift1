@@ -1,5 +1,5 @@
 import React from 'react';
-import { MapPin, Navigation, Car, Clock, IndianRupee } from 'lucide-react';
+import { MapPin, Navigation, Car, Clock, IndianRupee, Star, MessageSquare } from 'lucide-react';
 
 const DriverTripHistoryList = ({ trips }) => {
   if (!trips || trips.length === 0) {
@@ -18,6 +18,24 @@ const DriverTripHistoryList = ({ trips }) => {
       case 'CANCELLED': return 'badge-danger';
       default: return 'badge-neutral';
     }
+  };
+
+  const renderStars = (rating) => {
+    const numRating = Number(rating);
+    return (
+      <div className="flex gap-0.5">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Star
+            key={star}
+            className={`w-4 h-4 ${
+              star <= numRating
+                ? 'text-amber-400 fill-amber-400'
+                : 'text-surface-200 dark:text-surface-600'
+            }`}
+          />
+        ))}
+      </div>
+    );
   };
 
   return (
@@ -67,6 +85,33 @@ const DriverTripHistoryList = ({ trips }) => {
               </div>
             )}
           </div>
+
+          {/* Rating & Review section */}
+          {trip.status === 'COMPLETED' && (
+            <div className="mt-4 pt-4 border-t border-surface-100 dark:border-surface-700/50">
+              {trip.rating != null ? (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-3">
+                    {renderStars(trip.rating)}
+                    <span className="text-sm font-semibold text-surface-700 dark:text-surface-300">
+                      {Number(trip.rating).toFixed(1)}
+                    </span>
+                    <span className="text-xs text-surface-400">from rider</span>
+                  </div>
+                  {trip.review && (
+                    <div className="flex items-start gap-2 mt-2">
+                      <MessageSquare className="w-4 h-4 text-surface-400 mt-0.5 flex-shrink-0" />
+                      <p className="text-sm text-surface-600 dark:text-surface-300 italic leading-relaxed">
+                        "{trip.review}"
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-surface-400 dark:text-surface-500 italic">No review yet</p>
+              )}
+            </div>
+          )}
         </div>
       ))}
     </div>

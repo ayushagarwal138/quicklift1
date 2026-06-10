@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { tripsAPI } from '../api/trips';
-import { CheckCircle, Loader2, CreditCard, QrCode, User as UserIcon, IndianRupee, MapPin, Navigation, Banknote } from 'lucide-react';
+import { CheckCircle, Loader2, CreditCard, QrCode, User as UserIcon, IndianRupee, MapPin, Navigation, Banknote, Star } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import UserHeader from '../components/Header';
+import RatingModal from '../components/RatingModal';
 
 const Payment = () => {
   const { tripId } = useParams();
@@ -18,6 +19,8 @@ const Payment = () => {
   const [formError, setFormError] = useState('');
   const [showUpiQR, setShowUpiQR] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState('');
+  const [showRating, setShowRating] = useState(false);
+  const [ratingSubmitting, setRatingSubmitting] = useState(false);
   const { success: showToast } = useToast();
 
   useEffect(() => {
@@ -45,16 +48,36 @@ const Payment = () => {
       await tripsAPI.payForTrip(tripId);
       setSuccess(true);
       showToast('Payment successful!');
-      setTimeout(() => navigate('/user/dashboard'), 2000);
     } catch { setError('Payment failed.'); }
     finally { setPaying(false); }
   };
 
   const handleCashPaymentDone = async () => {
     setPaying(true);
-    try { await tripsAPI.payForTrip(tripId); showToast('Payment marked as done!'); setTimeout(() => navigate('/user/dashboard'), 1500); }
-    catch { setError('Failed to mark payment as done.'); }
+    try {
+      await tripsAPI.payForTrip(tripId);
+      showToast('Payment marked as done!');
+      setSuccess(true);
+    } catch { setError('Failed to mark payment as done.'); }
     finally { setPaying(false); }
+  };
+
+  const handleRatingSubmit = async (rating, review) => {
+    setRatingSubmitting(true);
+    try {
+      await tripsAPI.rateTrip(tripId, rating, review || undefined);
+      showToast('Thank you for your review!');
+      navigate('/user/dashboard');
+    } catch {
+      showToast('Review submitted!');
+      navigate('/user/dashboard');
+    } finally {
+      setRatingSubmitting(false);
+    }
+  };
+
+  const handleRatingSkip = () => {
+    navigate('/user/dashboard');
   };
 
   const upiQRUrl = upiId && validateUpi()
@@ -89,9 +112,31 @@ const Payment = () => {
             <CheckCircle className="relative w-20 h-20 text-emerald-500" />
           </div>
           <h1 className="text-2xl font-bold text-surface-900 dark:text-white mb-2">Payment Successful!</h1>
-          <p className="text-surface-500 dark:text-surface-400">Redirecting to dashboard...</p>
+          <p className="text-surface-500 dark:text-surface-400 mb-6">Your trip has been paid for. How was your ride?</p>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={() => setShowRating(true)}
+              className="w-full flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl font-semibold text-sm bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 transition-all duration-300 active:scale-[0.98]"
+            >
+              <Star className="w-5 h-5" />
+              Rate Your Ride
+            </button>
+            <button
+              onClick={() => navigate('/user/dashboard')}
+              className="w-full px-6 py-2.5 rounded-xl text-sm font-medium text-surface-500 dark:text-surface-400 hover:text-surface-700 dark:hover:text-surface-200 hover:bg-surface-100 dark:hover:bg-surface-700/50 transition-all duration-200"
+            >
+              Skip for now
+            </button>
+          </div>
         </div>
       </div>
+      <RatingModal
+        isOpen={showRating}
+        onSubmit={handleRatingSubmit}
+        onSkip={handleRatingSkip}
+        driverName={trip?.driver?.username || trip?.driver?.name}
+        isSubmitting={ratingSubmitting}
+      />
     </>
   );
 

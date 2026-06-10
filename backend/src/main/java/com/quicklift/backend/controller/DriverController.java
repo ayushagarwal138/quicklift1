@@ -200,6 +200,16 @@ public class DriverController {
             }
         }
 
+        // Fallback: if aggregate pendingRequests is zero, count directly
+        if (pendingRequests == 0) {
+            long directCount = tripRepository.findByStatus(TripStatus.REQUESTED).stream()
+                .filter(t -> t.getDriver() == null || t.getDriver().getId().equals(driver.getId()))
+                .count();
+            if (directCount > 0) {
+                pendingRequests = directCount;
+            }
+        }
+
         return ResponseEntity.ok(new DriverSummaryResponse(earnings, rating, activeTrips, pendingRequests, historyTrips));
     }
 
