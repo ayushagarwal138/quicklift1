@@ -64,10 +64,26 @@ const DriverDashboard = () => {
             }
             const sortedPendingTrips = [...availableTrips].sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt));
             setPendingTrips(sortedPendingTrips);
+            const completedTrips = myTrips.filter(trip => trip.status === 'COMPLETED');
             setPastTrips(myTrips.filter(trip => trip.status === 'COMPLETED' || trip.status === 'CANCELLED')
                 .sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt)));
-            setEarnings(Number(summary?.earnings ?? 0));
-            setRating(Number(summary?.rating ?? 0));
+
+            // Use summary earnings, fallback to computing from completed trips
+            let totalEarnings = Number(summary?.earnings ?? 0);
+            if (!totalEarnings && completedTrips.length > 0) {
+                totalEarnings = completedTrips.reduce((sum, trip) => sum + (Number(trip.fare) || 0), 0);
+            }
+            setEarnings(totalEarnings);
+
+            let avgRating = Number(summary?.rating ?? 0);
+            if (!avgRating && completedTrips.length > 0) {
+                const ratedTrips = completedTrips.filter(t => t.rating != null);
+                if (ratedTrips.length > 0) {
+                    avgRating = ratedTrips.reduce((sum, t) => sum + Number(t.rating), 0) / ratedTrips.length;
+                }
+            }
+            setRating(avgRating);
+
             setPendingRequestsCount(Number(summary?.pendingRequests ?? sortedPendingTrips.length));
         } catch (err) {
             error(err.response?.data?.message || 'Failed to fetch dashboard data.');

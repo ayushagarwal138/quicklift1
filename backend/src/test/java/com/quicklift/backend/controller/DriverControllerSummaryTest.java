@@ -8,6 +8,7 @@ import com.quicklift.backend.repository.TripRepository;
 import com.quicklift.backend.service.TripService;
 import com.quicklift.backend.service.UserService;
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -96,6 +97,7 @@ class DriverControllerSummaryTest {
         when(userService.findByUsername("driver-user")).thenReturn(Optional.of(user));
         when(driverRepository.findByUserId(1L)).thenReturn(Optional.of(driver));
         when(tripRepository.getDriverSummaryAggregate(7L)).thenReturn(null);
+        when(tripRepository.findByDriverId(7L)).thenReturn(Collections.emptyList());
 
         ResponseEntity<?> response = driverController.getDriverSummary();
 
@@ -122,6 +124,7 @@ class DriverControllerSummaryTest {
             "invalid",
             null,
         });
+        // No fallback needed since earnings parse successfully to 999.99
 
         ResponseEntity<?> response = driverController.getDriverSummary();
 

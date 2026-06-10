@@ -20,11 +20,11 @@ public interface TripRepository extends JpaRepository<Trip, Long> {
 
     @Query("""
         select
-            coalesce(sum(case when t.status = com.quicklift.backend.model.TripStatus.COMPLETED then t.fare else 0 end), 0),
-            coalesce(avg(case when t.status = com.quicklift.backend.model.TripStatus.COMPLETED then t.rating else null end), 0),
-            coalesce(sum(case when t.status in (com.quicklift.backend.model.TripStatus.ACCEPTED, com.quicklift.backend.model.TripStatus.STARTED) then 1 else 0 end), 0),
+            coalesce(sum(case when t.status = com.quicklift.backend.model.TripStatus.COMPLETED then t.fare else null end), 0L),
+            coalesce(avg(case when t.status = com.quicklift.backend.model.TripStatus.COMPLETED then t.rating else null end), 0L),
+            coalesce(sum(case when t.status in (com.quicklift.backend.model.TripStatus.ACCEPTED, com.quicklift.backend.model.TripStatus.STARTED) then 1L else 0L end), 0L),
             (select count(t2.id) from Trip t2 where t2.status = com.quicklift.backend.model.TripStatus.REQUESTED and (t2.driver is null or t2.driver.id = :driverId)),
-            coalesce(sum(case when t.status in (com.quicklift.backend.model.TripStatus.COMPLETED, com.quicklift.backend.model.TripStatus.CANCELLED) then 1 else 0 end), 0)
+            coalesce(sum(case when t.status in (com.quicklift.backend.model.TripStatus.COMPLETED, com.quicklift.backend.model.TripStatus.CANCELLED) then 1L else 0L end), 0L)
         from Trip t
         where t.driver.id = :driverId
         """)

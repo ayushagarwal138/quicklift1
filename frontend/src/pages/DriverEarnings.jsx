@@ -14,10 +14,21 @@ const DriverEarnings = () => {
         const fetchData = async () => {
             setIsLoading(true);
             try {
-                const summary = await driverAPI.getSummary();
-                setEarnings(summary.earnings);
-                const trips = await driverAPI.getMyTrips();
-                setHistory(trips.filter(t => t.status === 'COMPLETED').sort((a,b) => new Date(b.requestedAt) - new Date(a.requestedAt)));
+                const [summary, trips] = await Promise.all([
+                    driverAPI.getSummary(),
+                    driverAPI.getMyTrips(),
+                ]);
+                const completedTrips = trips
+                    .filter(t => t.status === 'COMPLETED')
+                    .sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt));
+                setHistory(completedTrips);
+
+                // Use summary earnings, but fallback to computing from completed trips
+                let totalEarnings = Number(summary?.earnings ?? 0);
+                if (!totalEarnings && completedTrips.length > 0) {
+                    totalEarnings = completedTrips.reduce((sum, trip) => sum + (Number(trip.fare) || 0), 0);
+                }
+                setEarnings(totalEarnings);
             } catch (err) {
                 error('Failed to fetch earnings data.');
             } finally {

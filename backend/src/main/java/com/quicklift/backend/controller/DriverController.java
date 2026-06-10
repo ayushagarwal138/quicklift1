@@ -172,23 +172,55 @@ public class DriverController {
         long historyTrips = 0L;
 
         if (aggregate != null && aggregate.length >= 5) {
-            try {
-                if (aggregate[0] != null) earnings = new BigDecimal(aggregate[0].toString());
-            } catch (Exception e) {}
-            try {
-                if (aggregate[1] != null) rating = new BigDecimal(aggregate[1].toString());
-            } catch (Exception e) {}
-            try {
-                if (aggregate[2] != null) activeTrips = Long.parseLong(aggregate[2].toString());
-            } catch (Exception e) {}
-            try {
-                if (aggregate[3] != null) pendingRequests = Long.parseLong(aggregate[3].toString());
-            } catch (Exception e) {}
-            try {
-                if (aggregate[4] != null) historyTrips = Long.parseLong(aggregate[4].toString());
-            } catch (Exception e) {}
+            earnings = toBigDecimal(aggregate[0]);
+            rating = toBigDecimal(aggregate[1]);
+            activeTrips = toLong(aggregate[2]);
+            pendingRequests = toLong(aggregate[3]);
+            historyTrips = toLong(aggregate[4]);
+        }
+
+        // Fallback: if aggregate earnings is zero, compute from completed trips directly
+        if (earnings.compareTo(BigDecimal.ZERO) == 0) {
+            List<Trip> driverTrips = tripRepository.findByDriverId(driver.getId());
+            BigDecimal computedEarnings = driverTrips.stream()
+                .filter(t -> t.getStatus() == TripStatus.COMPLETED && t.getFare() != null)
+                .map(Trip::getFare)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+            if (computedEarnings.compareTo(BigDecimal.ZERO) > 0) {
+                earnings = computedEarnings;
+            }
+            // Also compute rating from completed trips if aggregate returned 0
+            if (rating.compareTo(BigDecimal.ZERO) == 0) {
+                double avgRating = driverTrips.stream()
+                    .filter(t -> t.getStatus() == TripStatus.COMPLETED && t.getRating() != null)
+                    .mapToDouble(t -> t.getRating().doubleValue())
+                    .average()
+                    .orElse(0.0);
+                rating = BigDecimal.valueOf(avgRating).setScale(2, RoundingMode.HALF_UP);
+            }
         }
 
         return ResponseEntity.ok(new DriverSummaryResponse(earnings, rating, activeTrips, pendingRequests, historyTrips));
+    }
+
+    private static BigDecimal toBigDecimal(Object value) {
+        if (value == null) return BigDecimal.ZERO;
+        if (value instanceof BigDecimal bd) return bd;
+        if (value instanceof Number num) return BigDecimal.valueOf(num.doubleValue());
+        try {
+            return new BigDecimal(value.toString());
+        } catch (Exception e) {
+            return BigDecimal.ZERO;
+        }
+    }
+
+    private static long toLong(Object value) {
+        if (value == null) return 0L;
+        if (value instanceof Number num) return num.longValue();
+        try {
+            return Long.parseLong(value.toString());
+        } catch (Exception e) {
+            return 0L;
+        }
     }
 }
