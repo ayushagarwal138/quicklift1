@@ -1,23 +1,31 @@
 package com.quicklift.backend.controller;
 
+import com.quicklift.backend.dto.DriverResponse;
+import com.quicklift.backend.dto.DriverSummaryResponse;
+import com.quicklift.backend.dto.TripResponse;
 import com.quicklift.backend.model.Driver;
+import com.quicklift.backend.model.DriverStatus;
 import com.quicklift.backend.model.Trip;
 import com.quicklift.backend.model.TripStatus;
 import com.quicklift.backend.model.User;
-import com.quicklift.backend.model.DriverStatus;
 import com.quicklift.backend.repository.DriverRepository;
+import com.quicklift.backend.repository.TripRepository;
 import com.quicklift.backend.service.TripService;
 import com.quicklift.backend.service.UserService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
-
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping({"/api/v1/drivers", "/api/driver"})
@@ -32,22 +40,24 @@ public class DriverController {
     @Autowired
     private DriverRepository driverRepository;
 
+    @Autowired
+    private TripRepository tripRepository;
+
     private User getAuthenticatedUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
-        return userService.findByUsername(username)
-                .orElseThrow(() -> new RuntimeException("Authenticated user not found"));
+        return userService.findByUsername(authentication.getName())
+            .orElseThrow(() -> new RuntimeException("Authenticated user not found"));
     }
 
     @GetMapping("/available-trips")
-    public ResponseEntity<List<Trip>> getAvailableTrips() {
+    public ResponseEntity<List<TripResponse>> getAvailableTrips() {
         User user = getAuthenticatedUser();
         Driver driver = driverRepository.findByUserId(user.getId())
             .orElseThrow(() -> new RuntimeException("Driver profile not found for the authenticated user."));
         List<Trip> availableTrips = tripService.findByStatus(TripStatus.REQUESTED).stream()
             .filter(trip -> trip.getDriver() == null || trip.getDriver().getId().equals(driver.getId()))
             .collect(Collectors.toList());
-        return ResponseEntity.ok(availableTrips);
+        return ResponseEntity.ok(availableTrips.stream().map(TripResponse::from).toList());
     }
 
     @PostMapping("/trips/{tripId}/accept")
@@ -56,9 +66,7 @@ public class DriverController {
             User user = getAuthenticatedUser();
             Driver driver = driverRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new RuntimeException("Driver profile not found for the authenticated user."));
-
-            Trip acceptedTrip = tripService.acceptTrip(tripId, driver.getId());
-            return ResponseEntity.ok(acceptedTrip);
+            return ResponseEntity.ok(TripResponse.from(tripService.acceptTrip(tripId, driver.getId())));
         } catch (org.springframework.security.access.AccessDeniedException e) {
             throw e;
         } catch (RuntimeException e) {
@@ -76,8 +84,7 @@ public class DriverController {
             if (trip.getDriver() == null || !trip.getDriver().getId().equals(driver.getId())) {
                 throw new org.springframework.security.access.AccessDeniedException("Driver is not assigned to this trip");
             }
-            Trip startedTrip = tripService.startTrip(tripId);
-            return ResponseEntity.ok(startedTrip);
+            return ResponseEntity.ok(TripResponse.from(tripService.startTrip(tripId)));
         } catch (org.springframework.security.access.AccessDeniedException e) {
             throw e;
         } catch (RuntimeException e) {
@@ -95,8 +102,7 @@ public class DriverController {
             if (trip.getDriver() == null || !trip.getDriver().getId().equals(driver.getId())) {
                 throw new org.springframework.security.access.AccessDeniedException("Driver is not assigned to this trip");
             }
-            Trip completedTrip = tripService.completeTrip(tripId, finalFare);
-            return ResponseEntity.ok(completedTrip);
+            return ResponseEntity.ok(TripResponse.from(tripService.completeTrip(tripId, finalFare)));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -106,36 +112,31 @@ public class DriverController {
     public ResponseEntity<?> getMyActiveTrip() {
         User user = getAuthenticatedUser();
         Driver driver = driverRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new RuntimeException("Driver profile not found for the authenticated user."));
-        
+            .orElseThrow(() -> new RuntimeException("Driver profile not found for the authenticated user."));
         List<TripStatus> activeStatuses = List.of(TripStatus.ACCEPTED, TripStatus.STARTED);
-        
         Optional<Trip> activeTrip = tripService.findByDriverId(driver.getId())
             .stream()
             .filter(trip -> activeStatuses.contains(trip.getStatus()))
             .findFirst();
-
-        return ResponseEntity.ok(activeTrip.orElse(null));
+        return ResponseEntity.ok(activeTrip.map(TripResponse::from).orElse(null));
     }
 
     @GetMapping("/my-trips")
     public ResponseEntity<?> getMyTrips() {
         User user = getAuthenticatedUser();
         Driver driver = driverRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new RuntimeException("Driver profile not found for the authenticated user."));
-        
-        List<Trip> trips = tripService.findByDriverId(driver.getId());
-        return ResponseEntity.ok(trips);
+            .orElseThrow(() -> new RuntimeException("Driver profile not found for the authenticated user."));
+        return ResponseEntity.ok(tripService.findByDriverId(driver.getId()).stream().map(TripResponse::from).toList());
     }
 
     @PostMapping("/set-status")
     public ResponseEntity<?> setDriverStatus(@RequestParam DriverStatus status) {
         User user = getAuthenticatedUser();
         Driver driver = driverRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new RuntimeException("Driver profile not found for the authenticated user."));
+            .orElseThrow(() -> new RuntimeException("Driver profile not found for the authenticated user."));
         driver.setStatus(status);
         driverRepository.save(driver);
-        return ResponseEntity.ok(driver);
+        return ResponseEntity.ok(DriverResponse.from(driver));
     }
 
     @PostMapping("/trips/{tripId}/reject")
@@ -144,8 +145,7 @@ public class DriverController {
             User user = getAuthenticatedUser();
             Driver driver = driverRepository.findByUserId(user.getId())
                 .orElseThrow(() -> new RuntimeException("Driver profile not found for the authenticated user."));
-            Trip rejectedTrip = tripService.rejectTrip(tripId, driver.getId());
-            return ResponseEntity.ok(rejectedTrip);
+            return ResponseEntity.ok(TripResponse.from(tripService.rejectTrip(tripId, driver.getId())));
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }
@@ -153,27 +153,20 @@ public class DriverController {
 
     @GetMapping({"/online", "/available"})
     public ResponseEntity<?> getOnlineDrivers() {
-        List<Driver> onlineDrivers = driverRepository.findByStatus(com.quicklift.backend.model.DriverStatus.ONLINE);
-        return ResponseEntity.ok(onlineDrivers);
+        return ResponseEntity.ok(driverRepository.findByStatus(DriverStatus.ONLINE).stream().map(DriverResponse::from).toList());
     }
 
     @GetMapping("/summary")
     public ResponseEntity<?> getDriverSummary() {
         User user = getAuthenticatedUser();
         Driver driver = driverRepository.findByUserId(user.getId())
-                .orElseThrow(() -> new RuntimeException("Driver profile not found for the authenticated user."));
-        // Calculate total earnings and average rating
-        double earnings = driver.getTrips().stream()
-                .filter(trip -> trip.getStatus() == com.quicklift.backend.model.TripStatus.COMPLETED && trip.getFare() != null)
-                .mapToDouble(trip -> trip.getFare().doubleValue())
-                .sum();
-        double avgRating = driver.getTrips().stream()
-                .filter(trip -> trip.getStatus() == com.quicklift.backend.model.TripStatus.COMPLETED && trip.getRating() != null)
-                .mapToDouble(trip -> trip.getRating().doubleValue())
-                .average().orElse(0.0);
-        return ResponseEntity.ok(java.util.Map.of(
-            "earnings", earnings,
-            "rating", avgRating
-        ));
+            .orElseThrow(() -> new RuntimeException("Driver profile not found for the authenticated user."));
+        Object[] aggregate = tripRepository.getDriverSummaryAggregate(driver.getId());
+        BigDecimal earnings = aggregate[0] == null ? BigDecimal.ZERO : (BigDecimal) aggregate[0];
+        BigDecimal rating = aggregate[1] == null ? BigDecimal.ZERO : (BigDecimal) aggregate[1];
+        long activeTrips = aggregate[2] == null ? 0L : ((Number) aggregate[2]).longValue();
+        long pendingRequests = aggregate[3] == null ? 0L : ((Number) aggregate[3]).longValue();
+        long historyTrips = aggregate[4] == null ? 0L : ((Number) aggregate[4]).longValue();
+        return ResponseEntity.ok(new DriverSummaryResponse(earnings, rating, activeTrips, pendingRequests, historyTrips));
     }
-} 
+}

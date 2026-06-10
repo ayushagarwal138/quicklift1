@@ -56,7 +56,7 @@ class TripServiceNotificationTest {
         Trip trip = trip(11L, rider);
         trip.setDriver(driver);
 
-        when(tripRepository.findById(11L)).thenReturn(Optional.of(trip));
+        when(tripRepository.findByIdForUpdate(11L)).thenReturn(Optional.of(trip));
         when(driverRepository.findById(2L)).thenReturn(Optional.of(driver));
         when(tripRepository.save(any(Trip.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -70,7 +70,8 @@ class TripServiceNotificationTest {
             eq("/trips/11/confirm"),
             eq(11L)
         );
-        verify(messagingTemplate).convertAndSend(eq("/topic/trip/11/status"), any(Trip.class));
+        verify(messagingTemplate).convertAndSend(eq("/topic/trip/11/status"), any(Object.class));
+        verify(messagingTemplate).convertAndSend(eq("/topic/driver/2/status"), any(Object.class));
     }
 
     @Test
@@ -80,7 +81,7 @@ class TripServiceNotificationTest {
         Driver driver = driver(2L, driverUser);
         Trip trip = trip(11L, rider);
 
-        when(tripRepository.findById(11L)).thenReturn(Optional.of(trip));
+        when(tripRepository.findByIdForUpdate(11L)).thenReturn(Optional.of(trip));
         when(driverRepository.findById(2L)).thenReturn(Optional.of(driver));
         when(tripRepository.save(any(Trip.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -94,7 +95,7 @@ class TripServiceNotificationTest {
             eq("/driver/pending-requests"),
             eq(11L)
         );
-        verify(messagingTemplate).convertAndSend(eq("/topic/driver/2/requests"), any(Trip.class));
+        verify(messagingTemplate).convertAndSend(eq("/topic/driver/2/requests"), any(Object.class));
     }
 
     private static Trip trip(Long id, User user) {

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { driverAPI } from '../api/driver';
+import { tripsAPI } from '../api/trips';
 import { useToast } from '../context/ToastContext';
-import { Car, Clock, DollarSign, MapPin, Star, Activity, UserCheck, Navigation } from 'lucide-react';
+import { Car, Clock, DollarSign, MapPin, Star, Activity, UserCheck, Navigation, Send } from 'lucide-react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import { useAuth } from '../context/AuthContext';
@@ -12,6 +13,7 @@ import SockJS from 'sockjs-client';
 import { getAuthenticatedWsUrl, getStompConnectHeaders } from '../api/ws';
 import MapResizer from '../components/MapResizer';
 import { configureLeafletIcons } from '../utils/leafletIcons';
+import { useRef } from 'react';
 
 configureLeafletIcons();
 
@@ -40,6 +42,10 @@ const DriverDashboard = () => {
     const [rating, setRating] = useState(0);
     const [selectedSection, setSelectedSection] = useState('dashboard');
     const [actionLoading, setActionLoading] = useState(false);
+    const [chatMessages, setChatMessages] = useState([]);
+    const [chatInput, setChatInput] = useState('');
+    const chatClientRef = useRef(null);
+    const chatEndRef = useRef(null);
 
     const fetchAllData = async () => {
         setIsLoading(true);
@@ -96,6 +102,73 @@ const DriverDashboard = () => {
         };
         fetchSummary();
     }, []);
+
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [chatMessages]);
+
+    useEffect(() => {
+        if (!activeTrip?.id) {
+            setChatMessages([]);
+            return;
+        }
+        let isMounted = true;
+        const loadHistory = async () => {
+            try {
+                const history = await tripsAPI.getTripMessages(activeTrip.id);
+                if (isMounted) {
+                    setChatMessages(Array.isArray(history) ? history : []);
+                }
+            } catch {
+                if (isMounted) {
+                    setChatMessages([]);
+                }
+            }
+        };
+        loadHistory();
+        return () => {
+            isMounted = false;
+        };
+    }, [activeTrip?.id]);
+
+    useEffect(() => {
+        if (!activeTrip?.id || !user) return;
+        const socketFactory = () => new SockJS(getAuthenticatedWsUrl());
+        const client = new Client({
+            webSocketFactory: socketFactory,
+            connectHeaders: getStompConnectHeaders(),
+            reconnectDelay: 5000,
+            heartbeatIncoming: 4000,
+            heartbeatOutgoing: 4000,
+        });
+        client.onConnect = () => {
+            client.subscribe(`/topic/trip/${activeTrip.id}/chat`, (message) => {
+                try {
+                    const payload = JSON.parse(message.body);
+                    setChatMessages((prev) => [...prev, payload]);
+                } catch {
+                    // Ignore malformed payloads
+                }
+            });
+        };
+        client.activate();
+        chatClientRef.current = client;
+        return () => {
+            if (chatClientRef.current) {
+                chatClientRef.current.deactivate();
+                chatClientRef.current = null;
+            }
+        };
+    }, [activeTrip?.id, user]);
+
+    const sendChatMessage = () => {
+        if (!activeTrip?.id || !chatInput.trim() || !chatClientRef.current?.connected) return;
+        chatClientRef.current.publish({
+            destination: `/app/chat/${activeTrip.id}`,
+            body: JSON.stringify({ message: chatInput.trim() }),
+        });
+        setChatInput('');
+    };
 
     const handleStatusToggle = async () => {
         const newStatus = driverStatus === 'ONLINE' ? 'OFFLINE' : 'ONLINE';
@@ -355,7 +428,7 @@ const DriverDashboard = () => {
 
                     {/* Active Trip Tab */}
                     {selectedSection === 'activeTrip' && activeTrip && (
-                        <div className="animate-fade-in">
+                        <div className="animate-fade-in space-y-6">
                             <h2 className="section-title flex items-center gap-2 mb-6">
                                 <Activity className="w-5 h-5 text-emerald-500" /> Active Trip
                             </h2>
@@ -406,6 +479,41 @@ const DriverDashboard = () => {
                                             <Polyline positions={[[activeTrip.pickupLatitude, activeTrip.pickupLongitude], [activeTrip.destinationLatitude, activeTrip.destinationLongitude]]} color="#3366ff" />
                                         </MapContainer>
                                     </div>
+                                </div>
+                            </div>
+                            <div className="card overflow-hidden">
+                                <div className="p-4 border-b border-surface-100 dark:border-surface-700/50">
+                                    <h3 className="text-sm font-semibold text-surface-900 dark:text-white">Chat with Rider</h3>
+                                </div>
+                                <div className="h-56 overflow-y-auto p-4 space-y-2 bg-surface-50 dark:bg-surface-800/50">
+                                    {chatMessages.length === 0 && (
+                                        <p className="text-center text-sm text-surface-400 py-8">No messages yet</p>
+                                    )}
+                                    {chatMessages.map((msg, idx) => (
+                                        <div key={msg.id || idx} className={`flex ${msg.senderUserId === user?.id ? 'justify-end' : 'justify-start'}`}>
+                                            <div className={`max-w-[80%] px-4 py-2 rounded-2xl text-sm ${
+                                                msg.senderUserId === user?.id
+                                                    ? 'bg-brand-600 text-white rounded-br-md'
+                                                    : 'bg-white dark:bg-surface-700 text-surface-900 dark:text-white border border-surface-200 dark:border-surface-600 rounded-bl-md'
+                                            }`}>
+                                                {msg.message}
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <div ref={chatEndRef} />
+                                </div>
+                                <div className="p-3 border-t border-surface-100 dark:border-surface-700/50 flex gap-2">
+                                    <input
+                                        type="text"
+                                        value={chatInput}
+                                        onChange={(e) => setChatInput(e.target.value)}
+                                        onKeyDown={(e) => { if (e.key === 'Enter') sendChatMessage(); }}
+                                        className="input flex-1"
+                                        placeholder="Type a message..."
+                                    />
+                                    <button onClick={sendChatMessage} className="btn-primary btn-icon">
+                                        <Send className="w-4 h-4" />
+                                    </button>
                                 </div>
                             </div>
                         </div>

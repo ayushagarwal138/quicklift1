@@ -55,7 +55,7 @@ const NotificationBell = ({ dark = false }) => {
       </button>
 
       {open && (
-        <div className={`absolute right-0 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border shadow-elevated z-50 animate-scale-in overflow-hidden ${
+        <div className={`fixed top-16 left-1/2 -translate-x-1/2 w-[calc(100vw-1rem)] max-w-[26rem] max-h-[70vh] rounded-2xl border shadow-elevated z-[70] animate-scale-in overflow-hidden sm:absolute sm:top-auto sm:left-auto sm:right-0 sm:mt-2 sm:translate-x-0 sm:w-[min(22rem,calc(100vw-2rem))] sm:max-h-none ${
           dark
             ? 'bg-surface-800 border-surface-700/50'
             : 'bg-white dark:bg-surface-800 border-surface-200/60 dark:border-surface-700/50'
@@ -75,7 +75,7 @@ const NotificationBell = ({ dark = false }) => {
             </button>
           </div>
 
-          <div className="max-h-96 overflow-y-auto">
+          <div className="max-h-[calc(70vh-4rem)] sm:max-h-96 overflow-y-auto">
             {loading && notifications.length === 0 ? (
               <div className="p-4 space-y-2">
                 <div className="skeleton h-12 rounded-xl" />
@@ -101,10 +101,10 @@ const NotificationBell = ({ dark = false }) => {
                   <div className="flex gap-3">
                     <span className={`mt-1 h-2 w-2 rounded-full flex-shrink-0 ${notification.read ? 'bg-surface-300 dark:bg-surface-600' : 'bg-brand-500'}`} />
                     <span className="min-w-0">
-                      <span className="block text-sm font-semibold text-surface-900 dark:text-white truncate">
+                      <span className="block text-sm sm:text-sm font-semibold text-surface-900 dark:text-white truncate">
                         {notification.title}
                       </span>
-                      <span className="block text-xs text-surface-600 dark:text-surface-300 line-clamp-2 mt-0.5">
+                      <span className="block text-[13px] sm:text-xs text-surface-600 dark:text-surface-300 line-clamp-2 mt-0.5">
                         {notification.message}
                       </span>
                       <span className="block text-[11px] text-surface-400 dark:text-surface-500 mt-1">

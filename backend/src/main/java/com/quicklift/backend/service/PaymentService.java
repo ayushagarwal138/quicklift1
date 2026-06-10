@@ -18,15 +18,18 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final TripRepository tripRepository;
     private final NotificationService notificationService;
+    private final TripService tripService;
 
     public PaymentService(
         PaymentRepository paymentRepository,
         TripRepository tripRepository,
-        NotificationService notificationService
+        NotificationService notificationService,
+        TripService tripService
     ) {
         this.paymentRepository = paymentRepository;
         this.tripRepository = tripRepository;
         this.notificationService = notificationService;
+        this.tripService = tripService;
     }
 
     @Transactional
@@ -49,7 +52,7 @@ public class PaymentService {
         Payment payment = new Payment();
         payment.setTrip(trip);
         payment.setAmount(trip.getFare());
-        payment.setMethod(request.getMethod().trim().toUpperCase());
+        payment.setMethod(tripService.normalizePaymentMethod(request.getMethod()));
         payment.setStatus(PaymentStatus.SUCCEEDED);
         payment.setProvider("SIMULATED");
         payment.setProviderReference("SIM-" + trip.getId() + "-" + System.currentTimeMillis());

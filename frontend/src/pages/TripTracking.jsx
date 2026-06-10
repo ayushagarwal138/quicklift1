@@ -11,6 +11,7 @@ import { MapPin, Navigation, User, Send, IndianRupee, Phone } from 'lucide-react
 import UserHeader from '../components/Header';
 import MapResizer from '../components/MapResizer';
 import { configureLeafletIcons } from '../utils/leafletIcons';
+import { useAuth } from '../context/AuthContext';
 
 configureLeafletIcons();
 
@@ -25,6 +26,7 @@ const TripTracking = () => {
   const { tripId } = useParams();
   const navigate = useNavigate();
   const { error, info } = useToast();
+  const { user } = useAuth();
   
   const [trip, setTrip] = useState(null);
   const [driverLocation, setDriverLocation] = useState(null);
@@ -79,7 +81,12 @@ const TripTracking = () => {
             setTrip(updatedTrip);
         });
         client.subscribe(`/topic/trip/${tripId}/chat`, (message) => {
-            setChatMessages((prev) => [...prev, { sender: 'driver', text: message.body, time: new Date() }]);
+            try {
+              const payload = JSON.parse(message.body);
+              setChatMessages((prev) => [...prev, payload]);
+            } catch {
+              // Ignore malformed payloads
+            }
         });
     };
 
@@ -90,6 +97,18 @@ const TripTracking = () => {
       if (stompClient.current) stompClient.current.deactivate();
     };
   }, [tripId, error, info]);
+
+  useEffect(() => {
+    const loadChatHistory = async () => {
+      try {
+        const history = await tripsAPI.getTripMessages(tripId);
+        setChatMessages(Array.isArray(history) ? history : []);
+      } catch {
+        setChatMessages([]);
+      }
+    };
+    loadChatHistory();
+  }, [tripId]);
   
   useEffect(() => {
     if (trip && trip.status === 'COMPLETED' && !trip.paid) {
@@ -99,8 +118,10 @@ const TripTracking = () => {
 
   const sendChatMessage = () => {
     if (chatInput.trim() && stompClient.current?.connected) {
-      stompClient.current.publish({ destination: `/app/chat/${tripId}`, body: chatInput });
-      setChatMessages((prev) => [...prev, { sender: 'me', text: chatInput, time: new Date() }]);
+      stompClient.current.publish({
+        destination: `/app/chat/${tripId}`,
+        body: JSON.stringify({ message: chatInput.trim() }),
+      });
       setChatInput('');
     }
   };
@@ -188,13 +209,13 @@ const TripTracking = () => {
                     <p className="text-center text-sm text-surface-400 py-8">No messages yet</p>
                   )}
                   {chatMessages.map((msg, idx) => (
-                    <div key={idx} className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
+                    <div key={msg.id || idx} className={`flex ${msg.senderUserId === user?.id ? 'justify-end' : 'justify-start'}`}>
                       <div className={`max-w-[80%] px-4 py-2 rounded-2xl text-sm ${
-                        msg.sender === 'me'
+                        msg.senderUserId === user?.id
                           ? 'bg-brand-600 text-white rounded-br-md'
                           : 'bg-white dark:bg-surface-700 text-surface-900 dark:text-white border border-surface-200 dark:border-surface-600 rounded-bl-md'
                       }`}>
-                        {msg.text}
+                        {msg.message}
                       </div>
                     </div>
                   ))}
@@ -271,7 +292,7 @@ const TripTracking = () => {
                     </div>
                     <div>
                       <p className="font-medium text-surface-900 dark:text-white">{trip.driver.user.username}</p>
-                      <p className="text-xs text-surface-500">{trip.driver.vehicleType} • {trip.driver.vehiclePlateNumber}</p>
+                      <p className="text-xs text-surface-500">{trip.driver.vehicleType} • {trip.driver.licensePlate || trip.driver.vehiclePlateNumber}</p>
                     </div>
                   </div>
                 </div>

@@ -1,30 +1,39 @@
 package com.quicklift.backend.controller;
 
-import com.quicklift.backend.dto.TripRequest;
 import com.quicklift.backend.dto.FareResponse;
 import com.quicklift.backend.dto.PaymentRequest;
+import com.quicklift.backend.dto.TripMessageResponse;
+import com.quicklift.backend.dto.TripRequest;
+import com.quicklift.backend.dto.TripResponse;
+import com.quicklift.backend.model.Driver;
 import com.quicklift.backend.model.Trip;
 import com.quicklift.backend.model.TripStatus;
 import com.quicklift.backend.model.User;
 import com.quicklift.backend.model.UserRole;
-import com.quicklift.backend.model.Driver;
 import com.quicklift.backend.repository.DriverRepository;
 import com.quicklift.backend.service.FareService;
 import com.quicklift.backend.service.PaymentService;
+import com.quicklift.backend.service.TripMessageService;
 import com.quicklift.backend.service.TripService;
 import com.quicklift.backend.service.UserService;
 import jakarta.validation.Valid;
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
-
-import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping({"/api/v1/trips", "/api/trips"})
@@ -45,6 +54,9 @@ public class TripController {
     @Autowired
     private PaymentService paymentService;
 
+    @Autowired
+    private TripMessageService tripMessageService;
+
     @PostMapping("/estimate")
     public ResponseEntity<?> estimateFare(@Valid @RequestBody TripRequest tripRequest) {
         try {
@@ -56,8 +68,6 @@ public class TripController {
             );
             BigDecimal estimatedFare = fareService.calculateFare(tripRequest);
             return ResponseEntity.ok(new FareResponse(estimatedFare, distance));
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (org.springframework.security.access.AccessDeniedException e) {
             throw e;
         } catch (Exception e) {
@@ -68,14 +78,10 @@ public class TripController {
     @PostMapping({"", "/book"})
     public ResponseEntity<?> bookTrip(@Valid @RequestBody TripRequest tripRequest) {
         try {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            String username = authentication.getName();
-            
-            Optional<User> user = userService.findByUsername(username);
+            Optional<User> user = userService.findByUsername(SecurityContextHolder.getContext().getAuthentication().getName());
             if (user.isEmpty()) {
                 return ResponseEntity.badRequest().body("User not found");
             }
-
             BigDecimal fare = fareService.calculateFare(tripRequest);
 
             Trip trip = new Trip();
@@ -92,7 +98,7 @@ public class TripController {
             trip.setPaymentMethod(tripRequest.getPaymentMethod());
 
             Trip createdTrip = tripService.createTrip(trip);
-            return ResponseEntity.ok(createdTrip);
+            return ResponseEntity.ok(TripResponse.from(createdTrip));
         } catch (org.springframework.security.access.AccessDeniedException e) {
             throw e;
         } catch (Exception e) {
@@ -103,19 +109,26 @@ public class TripController {
     @GetMapping("/my-trips")
     public ResponseEntity<?> getMyTrips() {
         User user = currentUser();
-        List<Trip> trips = tripService.findByUserId(user.getId());
-        return ResponseEntity.ok(trips);
+        return ResponseEntity.ok(tripService.findByUserId(user.getId()).stream().map(TripResponse::from).toList());
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<?> getTripById(@PathVariable Long id) {
         Optional<Trip> trip = tripService.findById(id);
-        if (trip.isPresent()) {
-            requireTripViewAccess(trip.get(), currentUser());
-            return ResponseEntity.ok(trip.get());
-        } else {
+        if (trip.isEmpty()) {
             return ResponseEntity.notFound().build();
         }
+        requireTripViewAccess(trip.get(), currentUser());
+        return ResponseEntity.ok(TripResponse.from(trip.get()));
+    }
+
+    @GetMapping("/{id}/messages")
+    public ResponseEntity<?> getTripChatMessages(@PathVariable Long id) {
+        Trip trip = tripService.findById(id).orElseThrow(() -> new RuntimeException("Trip not found"));
+        requireTripViewAccess(trip, currentUser());
+        return ResponseEntity.ok(tripMessageService.findByTrip(id, currentUser()).stream()
+            .map(TripMessageResponse::from)
+            .toList());
     }
 
     @PostMapping("/{id}/cancel")
@@ -123,8 +136,7 @@ public class TripController {
         try {
             Trip trip = tripService.findById(id).orElseThrow(() -> new RuntimeException("Trip not found"));
             requireTripCancelAccess(trip, currentUser());
-            Trip cancelledTrip = tripService.cancelTrip(id);
-            return ResponseEntity.ok(cancelledTrip);
+            return ResponseEntity.ok(TripResponse.from(tripService.cancelTrip(id)));
         } catch (org.springframework.security.access.AccessDeniedException e) {
             throw e;
         } catch (Exception e) {
@@ -133,14 +145,13 @@ public class TripController {
     }
 
     @PostMapping({"/{id}/rate", "/{id}/rating"})
-    public ResponseEntity<?> rateTrip(@PathVariable Long id, 
-                                     @RequestParam BigDecimal rating,
-                                     @RequestParam(required = false) String review) {
+    public ResponseEntity<?> rateTrip(@PathVariable Long id,
+                                      @RequestParam BigDecimal rating,
+                                      @RequestParam(required = false) String review) {
         try {
             Trip trip = tripService.findById(id).orElseThrow(() -> new RuntimeException("Trip not found"));
             requireTripOwnerAccess(trip, currentUser());
-            Trip ratedTrip = tripService.rateTrip(id, rating, review);
-            return ResponseEntity.ok(ratedTrip);
+            return ResponseEntity.ok(TripResponse.from(tripService.rateTrip(id, rating, review)));
         } catch (org.springframework.security.access.AccessDeniedException e) {
             throw e;
         } catch (Exception e) {
@@ -151,28 +162,24 @@ public class TripController {
     @GetMapping("/status/{status}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getTripsByStatus(@PathVariable TripStatus status) {
-        List<Trip> trips = tripService.findByStatus(status);
-        return ResponseEntity.ok(trips);
+        return ResponseEntity.ok(tripService.findByStatus(status).stream().map(TripResponse::from).toList());
     }
 
     @GetMapping("/driver/{driverId}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> getTripsByDriver(@PathVariable Long driverId) {
-        List<Trip> trips = tripService.findByDriverId(driverId);
-        return ResponseEntity.ok(trips);
+        return ResponseEntity.ok(tripService.findByDriverId(driverId).stream().map(TripResponse::from).toList());
     }
 
     @PostMapping("/request-to-driver")
     public ResponseEntity<?> requestToDriver(@RequestBody TripRequest tripRequest, @RequestParam Long driverId) {
         try {
-            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-            String username = authentication.getName();
-            Optional<User> user = userService.findByUsername(username);
+            Optional<User> user = userService.findByUsername(SecurityContextHolder.getContext().getAuthentication().getName());
             if (user.isEmpty()) {
                 return ResponseEntity.badRequest().body("User not found");
             }
             Trip trip = tripService.createTripForDriver(tripRequest, user.get(), driverId);
-            return ResponseEntity.ok(trip);
+            return ResponseEntity.ok(TripResponse.from(trip));
         } catch (org.springframework.security.access.AccessDeniedException e) {
             throw e;
         } catch (Exception e) {
@@ -184,7 +191,7 @@ public class TripController {
     public ResponseEntity<?> requestExistingTripToDriver(@PathVariable Long id, @RequestParam Long driverId) {
         try {
             Trip trip = tripService.requestExistingTripToDriver(id, driverId, currentUser());
-            return ResponseEntity.ok(trip);
+            return ResponseEntity.ok(TripResponse.from(trip));
         } catch (org.springframework.security.access.AccessDeniedException e) {
             throw e;
         } catch (Exception e) {
@@ -202,7 +209,7 @@ public class TripController {
             request.setMethod(trip.getPaymentMethod() == null ? "CASH" : trip.getPaymentMethod());
             paymentService.createSimulatedPayment(request, currentUser());
             Trip paidTrip = tripService.findById(id).orElseThrow(() -> new RuntimeException("Trip not found"));
-            return ResponseEntity.ok(paidTrip);
+            return ResponseEntity.ok(TripResponse.from(paidTrip));
         } catch (org.springframework.security.access.AccessDeniedException e) {
             throw e;
         } catch (Exception e) {
@@ -213,12 +220,10 @@ public class TripController {
     @PatchMapping("/{id}/payment-method")
     public ResponseEntity<?> updatePaymentMethod(@PathVariable Long id, @RequestBody Map<String, String> body) {
         try {
-            String paymentMethod = body.get("paymentMethod");
             Trip trip = tripService.findById(id).orElseThrow(() -> new RuntimeException("Trip not found"));
             requireTripOwnerAccess(trip, currentUser());
-            trip.setPaymentMethod(paymentMethod);
-            Trip updatedTrip = tripService.save(trip);
-            return ResponseEntity.ok(updatedTrip);
+            Trip updatedTrip = tripService.updatePaymentMethod(id, body.get("paymentMethod"));
+            return ResponseEntity.ok(TripResponse.from(updatedTrip));
         } catch (org.springframework.security.access.AccessDeniedException e) {
             throw e;
         } catch (Exception e) {
@@ -230,7 +235,7 @@ public class TripController {
     @PreAuthorize("hasRole('DRIVER')")
     public ResponseEntity<?> acceptTrip(@PathVariable Long id) {
         Driver driver = currentDriver();
-        return ResponseEntity.ok(tripService.acceptTrip(id, driver.getId()));
+        return ResponseEntity.ok(TripResponse.from(tripService.acceptTrip(id, driver.getId())));
     }
 
     @PostMapping("/{id}/start")
@@ -238,7 +243,7 @@ public class TripController {
     public ResponseEntity<?> startTrip(@PathVariable Long id) {
         Trip trip = tripService.findById(id).orElseThrow(() -> new RuntimeException("Trip not found"));
         requireAssignedDriverAccess(trip, currentDriver());
-        return ResponseEntity.ok(tripService.startTrip(id));
+        return ResponseEntity.ok(TripResponse.from(tripService.startTrip(id)));
     }
 
     @PostMapping("/{id}/complete")
@@ -246,7 +251,7 @@ public class TripController {
     public ResponseEntity<?> completeTrip(@PathVariable Long id, @RequestParam BigDecimal finalFare) {
         Trip trip = tripService.findById(id).orElseThrow(() -> new RuntimeException("Trip not found"));
         requireAssignedDriverAccess(trip, currentDriver());
-        return ResponseEntity.ok(tripService.completeTrip(id, finalFare));
+        return ResponseEntity.ok(TripResponse.from(tripService.completeTrip(id, finalFare)));
     }
 
     private User currentUser() {

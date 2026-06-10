@@ -150,7 +150,7 @@ const SelectDriver = () => {
                     <User className="w-7 h-7 text-surface-500 dark:text-surface-400" />
                   </div>
                   <h3 className="font-semibold text-surface-900 dark:text-white">{driver.user.username}</h3>
-                  <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">{driver.vehicleType} • {driver.vehiclePlateNumber}</p>
+                  <p className="text-xs text-surface-500 dark:text-surface-400 mt-1">{driver.vehicleType} • {driver.licensePlate || driver.vehiclePlateNumber}</p>
                   <button
                     className="btn-primary btn-sm w-full mt-4"
                     onClick={() => handleSendRequest(driver)}

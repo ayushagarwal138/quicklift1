@@ -20,6 +20,10 @@ export const tripsAPI = {
     const response = await api.get(`${API_PREFIX}/trips/${id}`);
     return response.data;
   },
+  getTripMessages: async (id) => {
+    const response = await api.get(`${API_PREFIX}/trips/${id}/messages`);
+    return response.data;
+  },
 
   cancelTrip: async (id) => {
     const response = await api.post(`${API_PREFIX}/trips/${id}/cancel`);

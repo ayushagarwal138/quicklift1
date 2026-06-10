@@ -1,6 +1,8 @@
 package com.quicklift.backend.controller;
 
 import com.quicklift.backend.dto.UserResponse;
+import com.quicklift.backend.dto.DriverResponse;
+import com.quicklift.backend.dto.TripResponse;
 import com.quicklift.backend.model.Driver;
 import com.quicklift.backend.model.Trip;
 import com.quicklift.backend.service.AdminService;
@@ -33,14 +35,14 @@ public class AdminController {
 
     @GetMapping("/drivers")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<Driver>> getAllDrivers() {
-        return ResponseEntity.ok(adminService.findAllDrivers());
+    public ResponseEntity<List<DriverResponse>> getAllDrivers() {
+        return ResponseEntity.ok(adminService.findAllDrivers().stream().map(DriverResponse::from).toList());
     }
 
     @GetMapping("/trips")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<Trip>> getAllTrips() {
-        return ResponseEntity.ok(adminService.findAllTrips());
+    public ResponseEntity<List<TripResponse>> getAllTrips() {
+        return ResponseEntity.ok(adminService.findAllTrips().stream().map(TripResponse::from).toList());
     }
 
     @DeleteMapping("/drivers/{id}")

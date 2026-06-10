@@ -25,6 +25,7 @@ public class User implements UserDetails {
     private Long id;
 
     @Version
+    @JsonIgnore
     private Long version;
     
     @NotBlank
@@ -33,6 +34,7 @@ public class User implements UserDetails {
     private String username;
 
     @Column(unique = true, nullable = false, length = 50)
+    @JsonIgnore
     private String normalizedUsername;
     
     @NotBlank
@@ -42,10 +44,12 @@ public class User implements UserDetails {
     private String email;
 
     @Column(unique = true, nullable = false, length = 100)
+    @JsonIgnore
     private String normalizedEmail;
     
     @NotBlank
     @Size(max = 120)
+    @JsonIgnore
     private String password;
     
     @NotBlank
