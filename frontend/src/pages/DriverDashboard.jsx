@@ -40,6 +40,7 @@ const DriverDashboard = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [earnings, setEarnings] = useState(0);
     const [rating, setRating] = useState(0);
+    const [pendingRequestsCount, setPendingRequestsCount] = useState(0);
     const [selectedSection, setSelectedSection] = useState('dashboard');
     const [actionLoading, setActionLoading] = useState(false);
     const [chatMessages, setChatMessages] = useState([]);
@@ -50,19 +51,29 @@ const DriverDashboard = () => {
     const fetchAllData = async () => {
         setIsLoading(true);
         try {
-            const activeTripData = await driverAPI.getMyActiveTrip();
+            const [activeTripData, availableTrips, myTrips, summary] = await Promise.all([
+                driverAPI.getMyActiveTrip(),
+                driverAPI.getAvailableTrips(),
+                driverAPI.getMyTrips(),
+                driverAPI.getSummary(),
+            ]);
             if (activeTripData && Object.keys(activeTripData).length > 0) {
                 setActiveTrip(activeTripData);
             } else {
                 setActiveTrip(null);
             }
-            const myTrips = await driverAPI.getMyTrips();
-            const sortedPendingTrips = [...myTrips.filter(trip => trip.status === 'REQUESTED')].sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt));
+            const sortedPendingTrips = [...availableTrips].sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt));
             setPendingTrips(sortedPendingTrips);
             setPastTrips(myTrips.filter(trip => trip.status === 'COMPLETED' || trip.status === 'CANCELLED')
                 .sort((a, b) => new Date(b.requestedAt) - new Date(a.requestedAt)));
+            setEarnings(Number(summary?.earnings ?? 0));
+            setRating(Number(summary?.rating ?? 0));
+            setPendingRequestsCount(Number(summary?.pendingRequests ?? sortedPendingTrips.length));
         } catch (err) {
             error(err.response?.data?.message || 'Failed to fetch dashboard data.');
+            setEarnings(0);
+            setRating(0);
+            setPendingRequestsCount(0);
         } finally {
             setIsLoading(false);
         }
@@ -90,17 +101,6 @@ const DriverDashboard = () => {
 
     useEffect(() => {
         fetchAllData();
-        const fetchSummary = async () => {
-            try {
-                const summary = await driverAPI.getSummary();
-                setEarnings(summary.earnings);
-                setRating(summary.rating);
-            } catch (err) {
-                setEarnings(0);
-                setRating(0);
-            }
-        };
-        fetchSummary();
     }, []);
 
     useEffect(() => {
@@ -317,7 +317,7 @@ const DriverDashboard = () => {
                                     </div>
                                     <div>
                                         <p className="stat-label">Pending Requests</p>
-                                        <p className="stat-value">{pendingTrips.length}</p>
+                                        <p className="stat-value">{pendingRequestsCount}</p>
                                     </div>
                                 </div>
                             </div>

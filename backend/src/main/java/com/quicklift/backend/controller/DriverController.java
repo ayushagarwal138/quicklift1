@@ -43,6 +43,36 @@ public class DriverController {
     @Autowired
     private TripRepository tripRepository;
 
+    private Object valueAt(Object[] aggregate, int index) {
+        if (aggregate == null || index < 0 || index >= aggregate.length) {
+            return null;
+        }
+        return aggregate[index];
+    }
+
+    private BigDecimal toBigDecimal(Object value) {
+        if (value == null) {
+            return BigDecimal.ZERO;
+        }
+        if (value instanceof BigDecimal decimal) {
+            return decimal;
+        }
+        if (value instanceof Number number) {
+            return new BigDecimal(number.toString());
+        }
+        return new BigDecimal(value.toString());
+    }
+
+    private long toLong(Object value) {
+        if (value == null) {
+            return 0L;
+        }
+        if (value instanceof Number number) {
+            return number.longValue();
+        }
+        return Long.parseLong(value.toString());
+    }
+
     private User getAuthenticatedUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         return userService.findByUsername(authentication.getName())
@@ -162,11 +192,11 @@ public class DriverController {
         Driver driver = driverRepository.findByUserId(user.getId())
             .orElseThrow(() -> new RuntimeException("Driver profile not found for the authenticated user."));
         Object[] aggregate = tripRepository.getDriverSummaryAggregate(driver.getId());
-        BigDecimal earnings = aggregate[0] == null ? BigDecimal.ZERO : (BigDecimal) aggregate[0];
-        BigDecimal rating = aggregate[1] == null ? BigDecimal.ZERO : (BigDecimal) aggregate[1];
-        long activeTrips = aggregate[2] == null ? 0L : ((Number) aggregate[2]).longValue();
-        long pendingRequests = aggregate[3] == null ? 0L : ((Number) aggregate[3]).longValue();
-        long historyTrips = aggregate[4] == null ? 0L : ((Number) aggregate[4]).longValue();
+        BigDecimal earnings = toBigDecimal(valueAt(aggregate, 0));
+        BigDecimal rating = toBigDecimal(valueAt(aggregate, 1));
+        long activeTrips = toLong(valueAt(aggregate, 2));
+        long pendingRequests = toLong(valueAt(aggregate, 3));
+        long historyTrips = toLong(valueAt(aggregate, 4));
         return ResponseEntity.ok(new DriverSummaryResponse(earnings, rating, activeTrips, pendingRequests, historyTrips));
     }
 }
