@@ -60,3 +60,15 @@ pnpm-debug.log*
 ### Docker / local runtime ###
 .docker/
 docker-data/
+
+### Screenshots / debug images ###
+*.png
+!frontend/public/*.png
+
+### AI-generated / prep docs ###
+INTERVIEW_PREPARATION_GUIDE.md
+QUICKLIFT_INTERVIEW_PREP_GUIDE.md
+PRODUCTION_RUNBOOK.md
+SETUP_GUIDE.md
+frontend/BOOKING_CONFIRMATION_README.md
+frontend/FRONTEND_README.md
