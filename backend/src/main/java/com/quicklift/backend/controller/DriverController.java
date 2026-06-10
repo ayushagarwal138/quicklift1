@@ -13,6 +13,7 @@ import com.quicklift.backend.repository.TripRepository;
 import com.quicklift.backend.service.TripService;
 import com.quicklift.backend.service.UserService;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -39,6 +40,7 @@ public class DriverController {
 
     @Autowired
     private DriverRepository driverRepository;
+
     @Autowired
     private TripRepository tripRepository;
 
@@ -160,50 +162,33 @@ public class DriverController {
         User user = getAuthenticatedUser();
         Driver driver = driverRepository.findByUserId(user.getId())
             .orElseThrow(() -> new RuntimeException("Driver profile not found for the authenticated user."));
-        Object[] aggregate = tripRepository.getDriverSummaryAggregate(driver.getId());
-        return ResponseEntity.ok(toDriverSummaryResponse(aggregate));
-    }
+        
+        Object[] aggregate = (Object[]) tripRepository.getDriverSummaryAggregate(driver.getId());
+        
+        BigDecimal earnings = BigDecimal.ZERO;
+        BigDecimal rating = BigDecimal.ZERO;
+        long activeTrips = 0L;
+        long pendingRequests = 0L;
+        long historyTrips = 0L;
 
-    private DriverSummaryResponse toDriverSummaryResponse(Object[] aggregate) {
-        if (aggregate == null || aggregate.length < 5) {
-            return new DriverSummaryResponse(BigDecimal.ZERO, BigDecimal.ZERO, 0L, 0L, 0L);
+        if (aggregate != null && aggregate.length >= 5) {
+            try {
+                if (aggregate[0] != null) earnings = new BigDecimal(aggregate[0].toString());
+            } catch (Exception e) {}
+            try {
+                if (aggregate[1] != null) rating = new BigDecimal(aggregate[1].toString());
+            } catch (Exception e) {}
+            try {
+                if (aggregate[2] != null) activeTrips = Long.parseLong(aggregate[2].toString());
+            } catch (Exception e) {}
+            try {
+                if (aggregate[3] != null) pendingRequests = Long.parseLong(aggregate[3].toString());
+            } catch (Exception e) {}
+            try {
+                if (aggregate[4] != null) historyTrips = Long.parseLong(aggregate[4].toString());
+            } catch (Exception e) {}
         }
-        BigDecimal earnings = safeToBigDecimal(aggregate[0]);
-        BigDecimal rating = safeToBigDecimal(aggregate[1]);
-        long activeTrips = safeToLong(aggregate[2]);
-        long pendingRequests = safeToLong(aggregate[3]);
-        long historyTrips = safeToLong(aggregate[4]);
-        return new DriverSummaryResponse(earnings, rating, activeTrips, pendingRequests, historyTrips);
-    }
 
-    private BigDecimal safeToBigDecimal(Object value) {
-        if (value == null) {
-            return BigDecimal.ZERO;
-        }
-        if (value instanceof BigDecimal bigDecimal) {
-            return bigDecimal;
-        }
-        if (value instanceof Number number) {
-            return BigDecimal.valueOf(number.doubleValue());
-        }
-        try {
-            return new BigDecimal(value.toString().trim());
-        } catch (NumberFormatException ex) {
-            return BigDecimal.ZERO;
-        }
-    }
-
-    private long safeToLong(Object value) {
-        if (value == null) {
-            return 0L;
-        }
-        if (value instanceof Number number) {
-            return number.longValue();
-        }
-        try {
-            return Long.parseLong(value.toString().trim());
-        } catch (NumberFormatException ex) {
-            return 0L;
-        }
+        return ResponseEntity.ok(new DriverSummaryResponse(earnings, rating, activeTrips, pendingRequests, historyTrips));
     }
 }
